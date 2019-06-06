@@ -1,0 +1,999 @@
+0. Download a container image from Docker Hub
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ docker pull ubuntu
+Using default tag: latest
+latest: Pulling from library/ubuntu
+6abc03819f3e: Pull complete 
+05731e63f211: Pull complete 
+0bd67c50d6be: Pull complete 
+Digest: sha256:f08638ec7ddc90065187e7eabdfac3c96e5ff0f6b2f1762cf31a4f49b53000a5
+Status: Downloaded newer image for ubuntu:latest
+
+1. List image containers downloaded
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ docker container ls
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+
+2. Create a container from just downloaded container image of Ubuntu and run an interactive shell
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ docker run -it ubuntu
+root@6de9edcc2458:/# ls
+bin  boot  dev  etc  home  lib  lib64  media  mnt  opt  proc  root  run  sbin  srv  sys  tmp  usr  var
+root@6de9edcc2458:/# 
+
+3. Update repositories package list
+
+root@6de9edcc2458:/# apt-get update
+Get:1 http://security.ubuntu.com/ubuntu bionic-security InRelease [88.7 kB]
+Get:2 http://archive.ubuntu.com/ubuntu bionic InRelease [242 kB]
+Get:3 http://archive.ubuntu.com/ubuntu bionic-updates InRelease [88.7 kB]
+Get:4 http://archive.ubuntu.com/ubuntu bionic-backports InRelease [74.6 kB]
+Get:5 http://security.ubuntu.com/ubuntu bionic-security/multiverse amd64 Packages [4168 B]
+Get:6 http://security.ubuntu.com/ubuntu bionic-security/restricted amd64 Packages [5436 B]
+Get:7 http://security.ubuntu.com/ubuntu bionic-security/universe amd64 Packages [310 kB]
+Get:8 http://archive.ubuntu.com/ubuntu bionic/universe amd64 Packages [11.3 MB]    
+Get:9 http://security.ubuntu.com/ubuntu bionic-security/main amd64 Packages [451 kB]       
+Get:10 http://archive.ubuntu.com/ubuntu bionic/main amd64 Packages [1344 kB]                                      
+Get:11 http://archive.ubuntu.com/ubuntu bionic/restricted amd64 Packages [13.5 kB]
+Get:12 http://archive.ubuntu.com/ubuntu bionic/multiverse amd64 Packages [186 kB]
+Get:13 http://archive.ubuntu.com/ubuntu bionic-updates/universe amd64 Packages [1200 kB]
+Get:14 http://archive.ubuntu.com/ubuntu bionic-updates/multiverse amd64 Packages [7236 B]
+Get:15 http://archive.ubuntu.com/ubuntu bionic-updates/restricted amd64 Packages [10.8 kB]
+Get:16 http://archive.ubuntu.com/ubuntu bionic-updates/main amd64 Packages [803 kB]
+Get:17 http://archive.ubuntu.com/ubuntu bionic-backports/main amd64 Packages [942 B]
+Get:18 http://archive.ubuntu.com/ubuntu bionic-backports/universe amd64 Packages [3671 B]
+Fetched 16.2 MB in 2s (9708 kB/s)                          
+Reading package lists... Done
+root@6de9edcc2458:/# 
+
+4. Finish shell session and check the status of the container
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ docker container ls -all
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS                      PORTS               NAMES
+6de9edcc2458        ubuntu              "/bin/bash"         48 seconds ago      Exited (0) 13 seconds ago                       mystifying_darwin
+
+5. Sign in in Docker Hub
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ docker login -u juanviz
+Password: 
+WARNING! Your password will be stored unencrypted in /home/jvherrera/.docker/config.json.
+Configure a credential helper to remove this warning. See
+https://docs.docker.com/engine/reference/commandline/login/#credentials-store
+
+Login Succeeded
+
+6. Commit the change to the just created and updated Ubuntu container
+
+docker commit -m "did an apt-get update" -a "jvherrera" mystifying_darwin juanviz/ubuntu-demo
+
+7. Push the change to Your Docker Hub account
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ docker push juanviz/ubuntu-demo
+The push refers to repository [docker.io/juanviz/ubuntu-demo]
+dd998fc8451a: Pushed 
+8d267010480f: Mounted from library/ubuntu 
+270f934787ed: Mounted from library/ubuntu 
+02571d034293: Mounted from library/ubuntu 
+latest: digest: sha256:538a4fd5de28c0cdaaa4c8db1965029e01bbd79692d8c165962e26f32c03e424 size: 1155
+
+
+NOTE:
+
+Container Isolation
+In the steps above we ran several commands via container instances with the help of docker container run. The docker container ls -a command showed us that there were several containers listed. Why are there so many containers listed if they are all from the alpine image?
+
+This is a critical security concept in the world of Docker containers! Even though each docker container run command used the same alpine image, each execution was a separate, isolated container. Each container has a separate filesystem and runs in a different namespace; by default a container has no way of interacting with other containers, even those from the same image
+
+
+8. Create a Docker Swarm cluster with your local node
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ docker swarm  init --advertise-addr 192.168.4.43:2377 --listen-addr 192.168.4.43:2377
+Swarm initialized: current node (ufkm4u90dmilz0nfemwodo65w) is now a manager.
+
+To add a worker to this swarm, run the following command:
+
+    docker swarm join --token SWMTKN-1-2cp5kdehnmow7rf1fgqso5q9njod3mwmz3pw4bopbw8r28vk2y-a28hsuz7611rcu6lyjxlq1mx5 192.168.4.43:2377
+
+To add a manager to this swarm, run 'docker swarm join-token manager' and follow the instructions.
+
+9. List nodes of Docker Swarm Cluster
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ docker node ls
+ID                            HOSTNAME                 STATUS              AVAILABILITY        MANAGER STATUS      ENGINE VERSION
+ufkm4u90dmilz0nfemwodo65w *   juanvi-HP-ZBook-14u-G5   Ready               Active              Leader              18.06.1-ce
+
+10. Create a service for expose nginx webserver
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ docker service create --name webserver -p 80:80 --replicas 2 nginx
+mugi9t8y0jhc59harrhwdpaxr
+overall progress: 2 out of 2 tasks 
+1/2: running   [==================================================>] 
+2/2: running   [==================================================>] 
+verify: Service converged 
+
+11. List Docker Swarm services created
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ docker service ls
+ID                  NAME                MODE                REPLICAS            IMAGE               PORTS
+mugi9t8y0jhc        webserver           replicated          2/2                 nginx:latest        *:80->80/tcp
+
+12. Scale up webserver service to 4 replicas 
+
+docker service update --replicas 4 webserver
+
+
+13. List details about services running
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ docker service ps webserver
+ID                  NAME                IMAGE               NODE                     DESIRED STATE       CURRENT STATE            ERROR               PORTS
+cgb6yjn1ofjd        webserver.1         nginx:latest        juanvi-HP-ZBook-14u-G5   Running             Running 51 seconds ago                       
+jr78iubpl5u8        webserver.2         nginx:latest        juanvi-HP-ZBook-14u-G5   Running             Running 51 seconds ago   
+
+
+14. Clear all the files created previously
+
+docker ps -a
+docker rmi $(docker images -a -q)
+docker ps -a -f status=exited
+docker stop $(docker ps -a -q)
+docker rm $(docker ps -a -q)
+docker system prune
+
+$ docker rm $(docker ps -a -q -f status=exited)
+
+15. Download course repository for run flask-app container
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories$ git clone https://github.com/juanviz/devacademyDocker.git
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories$ cd Docker/
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/Docker$ cd flask-app/
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/Docker/flask-app$ ls
+app.py  Dockerfile  Dockerrun.aws.json  requirements.txt  templates
+
+16. Edit Dockerfile for ensure all of the configuration is fine
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/Docker/flask-app$ vi Dockerfile 
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/Docker/flask-app$ cd ..
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/Docker$ cd ..
+
+17. Create the image with flask-app 
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories$ docker build -t juanviz/flask-demo flask-app/flask-app/
+Sending build context to Docker daemon  8.704kB
+Step 1/3 : FROM python:3-onbuild
+3-onbuild: Pulling from library/python
+1c7fe136a31e: Pull complete 
+ece825d3308b: Pull complete 
+06854774e2f3: Pull complete 
+f0db43b9b8da: Pull complete 
+2d21c767035c: Pull complete 
+e10b68fb77e6: Pull complete 
+e2c0fb34dff3: Pull complete 
+e96bc319bce0: Pull complete 
+490280dbcfb7: Pull complete 
+Digest: sha256:76df62c122c910751d8cd3101f8e3da39efd4ee828686b7ff0b5a5b1d967553f
+Status: Downloaded newer image for python:3-onbuild
+# Executing 3 build triggers
+ ---> Running in cf6b28bb1a40
+Collecting Flask==0.10.1 (from -r requirements.txt (line 1))
+  Downloading https://files.pythonhosted.org/packages/db/9c/149ba60c47d107f85fe52564133348458f093dd5e6b57a5b60ab9ac517bb/Flask-0.10.1.tar.gz (544kB)
+Collecting Werkzeug>=0.7 (from Flask==0.10.1->-r requirements.txt (line 1))
+  Downloading https://files.pythonhosted.org/packages/9f/57/92a497e38161ce40606c27a86759c6b92dd34fcdb33f64171ec559257c02/Werkzeug-0.15.4-py2.py3-none-any.whl (327kB)
+Collecting Jinja2>=2.4 (from Flask==0.10.1->-r requirements.txt (line 1))
+  Downloading https://files.pythonhosted.org/packages/1d/e7/fd8b501e7a6dfe492a433deb7b9d833d39ca74916fa8bc63dd1a4947a671/Jinja2-2.10.1-py2.py3-none-any.whl (124kB)
+Collecting itsdangerous>=0.21 (from Flask==0.10.1->-r requirements.txt (line 1))
+  Downloading https://files.pythonhosted.org/packages/76/ae/44b03b253d6fade317f32c24d100b3b35c2239807046a4c953c7b89fa49e/itsdangerous-1.1.0-py2.py3-none-any.whl
+Collecting MarkupSafe>=0.23 (from Jinja2>=2.4->Flask==0.10.1->-r requirements.txt (line 1))
+  Downloading https://files.pythonhosted.org/packages/b2/5f/23e0023be6bb885d00ffbefad2942bc51a620328ee910f64abe5a8d18dd1/MarkupSafe-1.1.1-cp36-cp36m-manylinux1_x86_64.whl
+Installing collected packages: Werkzeug, MarkupSafe, Jinja2, itsdangerous, Flask
+  Running setup.py install for Flask: started
+    Running setup.py install for Flask: finished with status 'done'
+Successfully installed Flask-0.10.1 Jinja2-2.10.1 MarkupSafe-1.1.1 Werkzeug-0.15.4 itsdangerous-1.1.0
+You are using pip version 10.0.1, however version 19.1.1 is available.
+You should consider upgrading via the 'pip install --upgrade pip' command.
+Removing intermediate container cf6b28bb1a40
+ ---> 1ba04d51fc60
+Step 2/3 : EXPOSE 5000
+ ---> Running in c639947a731a
+Removing intermediate container c639947a731a
+ ---> 60d3f684b3d8
+Step 3/3 : CMD ["python", "./app.py"]
+ ---> Running in 6762c71e760c
+Removing intermediate container 6762c71e760c
+ ---> 1cea99866f0d
+Successfully built 1cea99866f0d
+Successfully tagged juanviz/flask-demo:latest
+
+18. Upload the image just created to Docker Hub
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories$ docker push juanviz/flask-demo
+The push refers to repository [docker.io/juanviz/flask-demo]
+824262bf3b14: Pushed 
+305b4ab68de9: Pushed 
+ec62278e88ed: Pushed 
+29778035860f: Mounted from library/python 
+fc88d2431f4d: Mounted from library/python 
+1dc1b82fa010: Mounted from library/python 
+09e3fd9cf357: Mounted from library/python 
+138d1921c15b: Mounted from library/python 
+d714f65bc280: Mounted from library/python 
+fd6060e25706: Mounted from library/python 
+d7ed640784f1: Mounted from library/python 
+1618a71a1198: Mounted from library/python 
+latest: digest: sha256:c7ec08a4bbdd8cab5b20b0a4757fdc6a434483c5dbe45a0feaac5d7c4ecc67e1 size: 2840
+
+Bridge networking
+
+19. Check networking od your Docker node
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker network ls
+NETWORK ID          NAME                DRIVER              SCOPE
+4b6ceb9d946b        bridge              bridge              local
+c6e08e54428b        docker_gwbridge     bridge              local
+d80564d14448        efk_default         bridge              local
+803a1d9ef12e        host                host                local
+372b87a7cff2        none                null                local
+
+The default bridge network is listed, along with host and none. The latter two are not fully-fledged networks, but are used to start a container connected directly to the Docker daemon host’s networking stack, or to start a container with no network devices. This tutorial will connect two containers to the bridge network.
+
+20. Start two alpine containers running ash, which is Alpine’s default shell rather than bash. The -dit flags mean to start the container detached (in the background), interactive (with the ability to type into it), and with a TTY (so you can see the input and output). Since you are starting it detached, you won’t be connected to the container right away. Instead, the container’s ID will be printed. Because you have not specified any --network flags, the containers connect to the default bridge network.
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker run -dit --name alpine1 alpine ash
+355a1968229f9e17ade9caee83fe5e1ec168e3e21d541dd3b2fb259a20801a95
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker run -dit --name alpine2 alpine ash
+0005193941f1e6b025dd4fa9e53cbd6fc38ce1ca99c161ebc9a61b4c6853d5e3
+
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker container ls
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+0005193941f1        alpine              "ash"               27 seconds ago      Up 25 seconds                           alpine2
+355a1968229f        alpine              "ash"               37 seconds ago      Up 35 seconds                           alpine1
+
+21. Inspect the bridge network to see what containers are connected to it
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker network inspect bridge
+[
+    {
+        "Name": "bridge",
+        "Id": "4b6ceb9d946b70ef728612a9203f76e0a6d59c13bba9fde840055bdce342175f",
+        "Created": "2019-06-04T16:59:46.641626901+02:00",
+        "Scope": "local",
+        "Driver": "bridge",
+        "EnableIPv6": false,
+        "IPAM": {
+            "Driver": "default",
+            "Options": null,
+            "Config": [
+                {
+                    "Subnet": "172.17.0.0/16",
+                    "Gateway": "172.17.0.1"
+                }
+            ]
+        },
+        "Internal": false,
+        "Attachable": false,
+        "Ingress": false,
+        "ConfigFrom": {
+            "Network": ""
+        },
+        "ConfigOnly": false,
+        "Containers": {
+            "0005193941f1e6b025dd4fa9e53cbd6fc38ce1ca99c161ebc9a61b4c6853d5e3": {
+                "Name": "alpine2",
+                "EndpointID": "66bd7a8c71180ca92bd24cf2d99e85fc2c72efcdaef0f233b1ff25fa88920325",
+                "MacAddress": "02:42:ac:11:00:03",
+                "IPv4Address": "172.17.0.3/16",
+                "IPv6Address": ""
+            },
+            "355a1968229f9e17ade9caee83fe5e1ec168e3e21d541dd3b2fb259a20801a95": {
+                "Name": "alpine1",
+                "EndpointID": "a6572e013f622a44d721fed0c43cf6d04df3f4fe6b25beca3689eca4bcb94fcb",
+                "MacAddress": "02:42:ac:11:00:02",
+                "IPv4Address": "172.17.0.2/16",
+                "IPv6Address": ""
+            }
+        },
+        "Options": {
+            "com.docker.network.bridge.default_bridge": "true",
+            "com.docker.network.bridge.enable_icc": "true",
+            "com.docker.network.bridge.enable_ip_masquerade": "true",
+            "com.docker.network.bridge.host_binding_ipv4": "0.0.0.0",
+            "com.docker.network.bridge.name": "docker0",
+            "com.docker.network.driver.mtu": "1500"
+        },
+        "Labels": {}
+    }
+]
+22. The containers are running in the background. Use the docker attach command to connect to alpine1.
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker attach alpine1
+/ # ip addr show
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+32: eth0@if33: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP 
+    link/ether 02:42:ac:11:00:02 brd ff:ff:ff:ff:ff:ff
+    inet 172.17.0.2/16 brd 172.17.255.255 scope global eth0
+       valid_lft forever preferred_lft forever
+/ # 
+
+From within alpine1, make sure you can connect to the internet by pinging google.com. The -c 2 flag limits the command to two ping attempts.
+
+/ #  ping -c 2 google.com
+PING google.com (172.217.17.14): 56 data bytes
+64 bytes from 172.217.17.14: seq=0 ttl=53 time=1.716 ms
+64 bytes from 172.217.17.14: seq=1 ttl=53 time=1.579 ms
+
+--- google.com ping statistics ---
+2 packets transmitted, 2 packets received, 0% packet loss
+round-trip min/avg/max = 1.579/1.647/1.716 ms
+/ # 
+
+
+
+The first interface is the loopback device. Ignore it for now. Notice that the second interface has the IP address 172.17.0.2, which is the same address shown for alpine1 in the previous step.
+
+
+Now try to ping the second container. First, ping it by its IP address, 172.17.0.3:
+/ #  ping -c 2 172.17.0.3
+PING 172.17.0.3 (172.17.0.3): 56 data bytes
+64 bytes from 172.17.0.3: seq=0 ttl=64 time=0.314 ms
+64 bytes from 172.17.0.3: seq=1 ttl=64 time=0.150 ms
+
+--- 172.17.0.3 ping statistics ---
+2 packets transmitted, 2 packets received, 0% packet loss
+round-trip min/avg/max = 0.150/0.232/0.314 ms
+
+23. This succeeds. Next, try pinging the alpine2 container by container name. This will fail.
+
+/ # ^C
+/ # ping -c 2 alpine2
+ping: bad address 'alpine2'
+
+24. Detach from alpine1 without stopping it by using the detach sequence, CTRL + p CTRL + q (hold down CTRL and type p followed by q). If you wish, attach to alpine2 and repeat steps 4, 5, and 6 there, substituting alpine1 for alpine2.
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker container stop alpine1 alpine2
+alpine1
+alpine2
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker container rm alpine1 alpine2
+alpine1
+alpine2
+
+
+25. In this example, we again start two alpine containers, but attach them to a user-defined network called alpine-net which we have already created. These containers are not connected to the default bridge network at all. We then start a third alpine container which is connected to the bridge network but not connected to alpine-net, and a fourth alpine container which is connected to both networks.
+Create the alpine-net network. You do not need the --driver bridge flag since it’s the default, but this example shows how to specify it.
+
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker run -dit --name alpine1 alpine ash
+32c324cb50bb313fc015206a00678e3131d05ab06a04392aef0229aac445f128
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker run -dit --name alpine2 alpine ash
+53f4ba7b020b0c832423c5ae523231b1a517943e6285b433c9641f51e5eb992b
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker network create --driver bridge alpine-net
+970f5e51803031b59eb1ab2a38bb5d350c8aee090e1f03d9daa9a98ba8a6fd66
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker network ls
+NETWORK ID          NAME                DRIVER              SCOPE
+970f5e518030        alpine-net          bridge              local
+4b6ceb9d946b        bridge              bridge              local
+c6e08e54428b        docker_gwbridge     bridge              local
+d80564d14448        efk_default         bridge              local
+803a1d9ef12e        host                host                local
+372b87a7cff2        none                null                local
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ 
+
+26. Inspect the alpine-net network. This shows you its IP address and the fact that no containers are connected to it:
+
+[
+    {
+        "Name": "alpine-net",
+        "Id": "970f5e51803031b59eb1ab2a38bb5d350c8aee090e1f03d9daa9a98ba8a6fd66",
+        "Created": "2019-06-06T12:48:28.791785566+02:00",
+        "Scope": "local",
+        "Driver": "bridge",
+        "EnableIPv6": false,
+        "IPAM": {
+            "Driver": "default",
+            "Options": {},
+            "Config": [
+                {
+                    "Subnet": "172.20.0.0/16",
+                    "Gateway": "172.20.0.1"
+                }
+            ]
+        },
+        "Internal": false,
+        "Attachable": false,
+        "Ingress": false,
+        "ConfigFrom": {
+            "Network": ""
+        },
+        "ConfigOnly": false,
+        "Containers": {},
+        "Options": {},
+        "Labels": {}
+    }
+]
+
+27. Notice that this network’s gateway is 172.18.0.1, as opposed to the default bridge network, whose gateway is 172.17.0.1. The exact IP address may be different on your system.
+
+Create your four containers. Notice the --network flags. You can only connect to one network during the docker run command, so you need to use docker network connect afterward to connect alpine4 to the bridge network as well.
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker run -dit --name alpine1 --network alpine-net alpine ash
+16136e5acf8bd309cede44eab0ed7f03b9b2d2811f89c70888e08c9daa3b6722
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker run -dit --name alpine2 --network alpine-net alpine ash
+109800a7e719d266d7d88f3415039924d72812ace244a32a5efa68a07abd380d
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker run -dit --name alpine3 alpine ash
+65ebd9a78c63538a4580ceaaea5f152330c106a5b5c9d6be84d69e1c36b956cf
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker run -dit --name alpine4 --network alpine-net alpine ash
+35cb7a8cb67057c304b98f63e0cf3ecccc98cb16f7545135105bc92b83c2db0d
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker network connect bridge alpine4
+
+28. Inspect the bridge network and the alpine-net network again:
+
+
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker container ls
+CONTAINER ID        IMAGE               COMMAND             CREATED              STATUS              PORTS               NAMES
+35cb7a8cb670        alpine              "ash"               About a minute ago   Up About a minute                       alpine4
+65ebd9a78c63        alpine              "ash"               About a minute ago   Up About a minute                       alpine3
+109800a7e719        alpine              "ash"               About a minute ago   Up About a minute                       alpine2
+16136e5acf8b        alpine              "ash"               3 minutes ago        Up 3 minutes                            alpine1
+
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker network inspect bridge
+[
+    {
+        "Name": "bridge",
+        "Id": "4b6ceb9d946b70ef728612a9203f76e0a6d59c13bba9fde840055bdce342175f",
+        "Created": "2019-06-04T16:59:46.641626901+02:00",
+        "Scope": "local",
+        "Driver": "bridge",
+        "EnableIPv6": false,
+        "IPAM": {
+            "Driver": "default",
+            "Options": null,
+            "Config": [
+                {
+                    "Subnet": "172.17.0.0/16",
+                    "Gateway": "172.17.0.1"
+                }
+            ]
+        },
+        "Internal": false,
+        "Attachable": false,
+        "Ingress": false,
+        "ConfigFrom": {
+            "Network": ""
+        },
+        "ConfigOnly": false,
+        "Containers": {
+            "35cb7a8cb67057c304b98f63e0cf3ecccc98cb16f7545135105bc92b83c2db0d": {
+                "Name": "alpine4",
+                "EndpointID": "0002306c93e2cd9494f2aade1ddfe731b32f7171bf62be89861bd5e9b8ccafb4",
+                "MacAddress": "02:42:ac:11:00:03",
+                "IPv4Address": "172.17.0.3/16",
+                "IPv6Address": ""
+            },
+            "65ebd9a78c63538a4580ceaaea5f152330c106a5b5c9d6be84d69e1c36b956cf": {
+                "Name": "alpine3",
+                "EndpointID": "9128376e434720f36265821c15aeef1eb2f4939629dcad3032c700aada13f26e",
+                "MacAddress": "02:42:ac:11:00:02",
+                "IPv4Address": "172.17.0.2/16",
+                "IPv6Address": ""
+            }
+        },
+        "Options": {
+            "com.docker.network.bridge.default_bridge": "true",
+            "com.docker.network.bridge.enable_icc": "true",
+            "com.docker.network.bridge.enable_ip_masquerade": "true",
+            "com.docker.network.bridge.host_binding_ipv4": "0.0.0.0",
+            "com.docker.network.bridge.name": "docker0",
+            "com.docker.network.driver.mtu": "1500"
+        },
+        "Labels": {}
+    }
+]
+
+Containers alpine3 and alpine4 are connected to the bridge network.
+
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker network inspect alpine-net
+[
+    {
+        "Name": "alpine-net",
+        "Id": "970f5e51803031b59eb1ab2a38bb5d350c8aee090e1f03d9daa9a98ba8a6fd66",
+        "Created": "2019-06-06T12:48:28.791785566+02:00",
+        "Scope": "local",
+        "Driver": "bridge",
+        "EnableIPv6": false,
+        "IPAM": {
+            "Driver": "default",
+            "Options": {},
+            "Config": [
+                {
+                    "Subnet": "172.20.0.0/16",
+                    "Gateway": "172.20.0.1"
+                }
+            ]
+        },
+        "Internal": false,
+        "Attachable": false,
+        "Ingress": false,
+        "ConfigFrom": {
+            "Network": ""
+        },
+        "ConfigOnly": false,
+        "Containers": {
+            "109800a7e719d266d7d88f3415039924d72812ace244a32a5efa68a07abd380d": {
+                "Name": "alpine2",
+                "EndpointID": "cbaee8b0f5fc12c304e9e56093195088a328ddf0a75055354dcaff7c60e8bb27",
+                "MacAddress": "02:42:ac:14:00:03",
+                "IPv4Address": "172.20.0.3/16",
+                "IPv6Address": ""
+            },
+            "16136e5acf8bd309cede44eab0ed7f03b9b2d2811f89c70888e08c9daa3b6722": {
+                "Name": "alpine1",
+                "EndpointID": "dbb44296b418748e1e2696d758f44099d8851980658d57db3f7915fa7343d99e",
+                "MacAddress": "02:42:ac:14:00:02",
+                "IPv4Address": "172.20.0.2/16",
+                "IPv6Address": ""
+            },
+            "35cb7a8cb67057c304b98f63e0cf3ecccc98cb16f7545135105bc92b83c2db0d": {
+                "Name": "alpine4",
+                "EndpointID": "40279a13f93c893f1d6c84f53e5009cb8c553bb6a1e736c187d012f80d91539d",
+                "MacAddress": "02:42:ac:14:00:04",
+                "IPv4Address": "172.20.0.4/16",
+                "IPv6Address": ""
+            }
+        },
+        "Options": {},
+        "Labels": {}
+    }
+]
+
+
+Containers alpine1, alpine2, and alpine4 are connected to the alpine-net network.
+
+29. On user-defined networks like alpine-net, containers can not only communicate by IP address, but can also resolve a container name to an IP address. This capability is called automatic service discovery. Let’s connect to alpine1 and test this out. alpine1 should be able to resolve alpine2 and alpine4 (and alpine1, itself) to IP addresses.
+
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker container attach alpine1
+/ # ping -c 2 alpine2
+PING alpine2 (172.20.0.3): 56 data bytes
+64 bytes from 172.20.0.3: seq=0 ttl=64 time=0.346 ms
+64 bytes from 172.20.0.3: seq=1 ttl=64 time=0.180 ms
+
+--- alpine2 ping statistics ---
+2 packets transmitted, 2 packets received, 0% packet loss
+round-trip min/avg/max = 0.180/0.263/0.346 ms
+/ # ^C
+/ # ping -c 2 alpine4
+PING alpine4 (172.20.0.4): 56 data bytes
+64 bytes from 172.20.0.4: seq=0 ttl=64 time=0.328 ms
+64 bytes from 172.20.0.4: seq=1 ttl=64 time=0.110 ms
+
+--- alpine4 ping statistics ---
+2 packets transmitted, 2 packets received, 0% packet loss
+round-trip min/avg/max = 0.110/0.219/0.328 ms
+/ # ping -c 2 alpine1
+PING alpine1 (172.20.0.2): 56 data bytes
+64 bytes from 172.20.0.2: seq=0 ttl=64 time=0.073 ms
+64 bytes from 172.20.0.2: seq=1 ttl=64 time=0.166 ms
+
+--- alpine1 ping statistics ---
+2 packets transmitted, 2 packets received, 0% packet loss
+round-trip min/avg/max = 0.073/0.119/0.166 ms
+
+30. From alpine1, you should not be able to connect to alpine3 at all, since it is not on the alpine-net network.
+
+/ # ping -c 2 alpine3
+ping: bad address 'alpine3'
+
+Not only that, but you can’t connect to alpine3 from alpine1 by its IP address either. Look back at the docker network inspect output for the bridge network and find alpine3’s IP address: 172.17.0.2 Try to ping it.
+
+/ # ping -c 2 172.17.0.2
+PING 172.17.0.2 (172.17.0.2): 56 data bytes
+
+--- 172.17.0.2 ping statistics ---
+2 packets transmitted, 0 packets received, 100% packet loss
+
+Detach from alpine1 using detach sequence, CTRL + p CTRL + q (hold down CTRL and type p followed by q).
+
+31. Remember that alpine4 is connected to both the default bridge network and alpine-net. It should be able to reach all of the other containers. However, you will need to address alpine3 by its IP address. Attach to it and run the tests.
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker container attach alpine4
+/ # ping -c 2 alpine1
+PING alpine1 (172.20.0.2): 56 data bytes
+64 bytes from 172.20.0.2: seq=0 ttl=64 time=0.220 ms
+64 bytes from 172.20.0.2: seq=1 ttl=64 time=0.181 ms
+
+--- alpine1 ping statistics ---
+2 packets transmitted, 2 packets received, 0% packet loss
+round-trip min/avg/max = 0.181/0.200/0.220 ms
+/ # ping -c 2 alpine2
+PING alpine2 (172.20.0.3): 56 data bytes
+64 bytes from 172.20.0.3: seq=0 ttl=64 time=0.275 ms
+64 bytes from 172.20.0.3: seq=1 ttl=64 time=0.194 ms
+
+--- alpine2 ping statistics ---
+2 packets transmitted, 2 packets received, 0% packet loss
+round-trip min/avg/max = 0.194/0.234/0.275 ms
+/ # ping -c 2 alpine3
+ping: bad address 'alpine3'
+/ # ping -c 2 172.17.0.2
+PING 172.17.0.2 (172.17.0.2): 56 data bytes
+64 bytes from 172.17.0.2: seq=0 ttl=64 time=0.311 ms
+64 bytes from 172.17.0.2: seq=1 ttl=64 time=0.184 ms
+
+--- 172.17.0.2 ping statistics ---
+2 packets transmitted, 2 packets received, 0% packet loss
+round-trip min/avg/max = 0.184/0.247/0.311 ms
+/ # ping -c 2 alpine4
+PING alpine4 (172.20.0.4): 56 data bytes
+64 bytes from 172.20.0.4: seq=0 ttl=64 time=0.148 ms
+64 bytes from 172.20.0.4: seq=1 ttl=64 time=0.082 ms
+
+--- alpine4 ping statistics ---
+2 packets transmitted, 2 packets received, 0% packet loss
+round-trip min/avg/max = 0.082/0.115/0.148 ms
+
+32. As a final test, make sure your containers can all connect to the internet by pinging google.com. You are already attached to alpine4 so start by trying from there. Next, detach from alpine4 and connect to alpine3 (which is only attached to the bridge network) and try again. Finally, connect to alpine1 (which is only connected to the alpine-net network) and try again.
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker container attach alpine4
+/ # ping -c 2 google.com
+PING google.com (216.58.211.46): 56 data bytes
+64 bytes from 216.58.211.46: seq=0 ttl=51 time=2.116 ms
+64 bytes from 216.58.211.46: seq=1 ttl=51 time=1.592 ms
+
+--- google.com ping statistics ---
+2 packets transmitted, 2 packets received, 0% packet loss
+round-trip min/avg/max = 1.592/1.854/2.116 ms
+/ # read escape sequence
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker container attach alpine3
+/ # ping -c 2 google.com
+PING google.com (172.217.168.174): 56 data bytes
+64 bytes from 172.217.168.174: seq=0 ttl=51 time=1.916 ms
+64 bytes from 172.217.168.174: seq=1 ttl=51 time=1.672 ms
+
+--- google.com ping statistics ---
+2 packets transmitted, 2 packets received, 0% packet loss
+round-trip min/avg/max = 1.672/1.794/1.916 ms
+/ # read escape sequence
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker container attach alpine1
+/ # ping -c 2 google.com
+PING google.com (216.58.211.46): 56 data bytes
+64 bytes from 216.58.211.46: seq=0 ttl=51 time=2.058 ms
+64 bytes from 216.58.211.46: seq=1 ttl=51 time=1.722 ms
+
+--- google.com ping statistics ---
+2 packets transmitted, 2 packets received, 0% packet loss
+round-trip min/avg/max = 1.722/1.890/2.058 ms
+
+
+33. Stop and remove all containers and the alpine-net network.
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker container stop alpine1 alpine2 alpine3 alpine4
+alpine1
+alpine2
+alpine3
+alpine4
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker container rm alpine1 alpine2 alpine3 alpine4
+alpine1
+alpine2
+alpine3
+alpine4
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker network rm alpine-net
+alpine-net
+
+
+Host networking
+
+The goal of this tutorial is to start a nginx container which binds directly to port 80 on the Docker host. From a networking point of view, this is the same level of isolation as if the nginx process were running directly on the Docker host and not in a container. However, in all other ways, such as storage, process namespace, and user namespace, the nginx process is isolated from the host.
+The host networking driver only works on Linux hosts, and is not supported on Docker Desktop for Mac, Docker Desktop for Windows, or Docker EE for Windows Server.
+
+34. Create and start the container as a detached process. The --rm option means to remove the container once it exits/stops. The -d flag means to start the container detached (in the background).
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker run --rm -d --network host --name my_nginx nginx
+Unable to find image 'nginx:latest' locally
+latest: Pulling from library/nginx
+743f2d6c1f65: Already exists 
+d6c2f01b1dae: Pull complete 
+d4da6ff1b555: Pull complete 
+Digest: sha256:12db363acf5b2d2f9f5fed240e228a04692bdac68402430fbd2f720c3a967d01
+Status: Downloaded newer image for nginx:latest
+362f83134ee5ec34306437c0eb6086193f594d012d15602685d2d18d5d66fce9
+
+Access Nginx by browsing to http://localhost:80/.
+
+35. Examine all network interfaces and verify that a new one was not created.
+ip addr show
+Verify which process is bound to port 80, using the netstat command. You need to use sudo because the process is owned by the Docker daemon user and you otherwise won’t be able to see its name or PID.
+
+sudo netstat -tulpn | grep :80
+
+36. Stop the container. It will be removed automatically as it was started using the --rm option.
+
+Overlay networking. Communicate between a container and a swarm service
+
+In this example, you start two different alpine containers on the same Docker host and do some tests to understand how they communicate with each other. You need to have Docker installed and running.
+
+37. Open a terminal window. List current networks before you do anything else. Here’s what you should see if you’ve never added a network or initialized a swarm on this Docker daemon. You may see different networks, but you should at least see these (the network IDs will be different):
+
+$ docker network ls
+
+NETWORK ID          NAME                DRIVER              SCOPE
+17e324f45964        bridge              bridge              local
+6ed54d316334        host                host                local
+7092879f2cc8        none                null                local
+
+The default bridge network is listed, along with host and none. The latter two are not fully-fledged networks, but are used to start a container connected directly to the Docker daemon host’s networking stack, or to start a container with no network devices. This tutorial will connect two containers to the bridge network.
+
+38. Start two alpine containers running ash, which is Alpine’s default shell rather than bash. The -dit flags mean to start the container detached (in the background), interactive (with the ability to type into it), and with a TTY (so you can see the input and output). Since you are starting it detached, you won’t be connected to the container right away. Instead, the container’s ID will be printed. Because you have not specified any --network flags, the containers connect to the default bridge network.
+
+$ docker run -dit --name alpine1 alpine ash
+
+$ docker run -dit --name alpine2 alpine ash
+Check that both containers are actually started:
+
+$ docker container ls
+
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+602dbf1edc81        alpine              "ash"               4 seconds ago       Up 3 seconds                            alpine2
+da33b7aa74b0        alpine              "ash"               17 seconds ago      Up 16 seconds                           alpine1
+
+39. Inspect the bridge network to see what containers are connected to it.
+
+$ docker network inspect bridge
+
+[
+    {
+        "Name": "bridge",
+        "Id": "17e324f459648a9baaea32b248d3884da102dde19396c25b30ec800068ce6b10",
+        "Created": "2017-06-22T20:27:43.826654485Z",
+        "Scope": "local",
+        "Driver": "bridge",
+        "EnableIPv6": false,
+        "IPAM": {
+            "Driver": "default",
+            "Options": null,
+            "Config": [
+                {
+                    "Subnet": "172.17.0.0/16",
+                    "Gateway": "172.17.0.1"
+                }
+            ]
+        },
+        "Internal": false,
+        "Attachable": false,
+        "Containers": {
+            "602dbf1edc81813304b6cf0a647e65333dc6fe6ee6ed572dc0f686a3307c6a2c": {
+                "Name": "alpine2",
+                "EndpointID": "03b6aafb7ca4d7e531e292901b43719c0e34cc7eef565b38a6bf84acf50f38cd",
+                "MacAddress": "02:42:ac:11:00:03",
+                "IPv4Address": "172.17.0.3/16",
+                "IPv6Address": ""
+            },
+            "da33b7aa74b0bf3bda3ebd502d404320ca112a268aafe05b4851d1e3312ed168": {
+                "Name": "alpine1",
+                "EndpointID": "46c044a645d6afc42ddd7857d19e9dcfb89ad790afb5c239a35ac0af5e8a5bc5",
+                "MacAddress": "02:42:ac:11:00:02",
+                "IPv4Address": "172.17.0.2/16",
+                "IPv6Address": ""
+            }
+        },
+        "Options": {
+            "com.docker.network.bridge.default_bridge": "true",
+            "com.docker.network.bridge.enable_icc": "true",
+            "com.docker.network.bridge.enable_ip_masquerade": "true",
+            "com.docker.network.bridge.host_binding_ipv4": "0.0.0.0",
+            "com.docker.network.bridge.name": "docker0",
+            "com.docker.network.driver.mtu": "1500"
+        },
+        "Labels": {}
+    }
+]
+Near the top, information about the bridge network is listed, including the IP address of the gateway between the Docker host and the bridge network (172.17.0.1). Under the Containers key, each connected container is listed, along with information about its IP address (172.17.0.2 for alpine1 and 172.17.0.3 for alpine2).
+
+40. The containers are running in the background. Use the docker attach command to connect to alpine1.
+
+$ docker attach alpine1
+
+/ #
+The prompt changes to # to indicate that you are the root user within the container. Use the ip addr show command to show the network interfaces for alpine1 as they look from within the container:
+
+# ip addr show
+
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN qlen 1
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host
+       valid_lft forever preferred_lft forever
+27: eth0@if28: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP
+    link/ether 02:42:ac:11:00:02 brd ff:ff:ff:ff:ff:ff
+    inet 172.17.0.2/16 scope global eth0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::42:acff:fe11:2/64 scope link
+       valid_lft forever preferred_lft forever
+The first interface is the loopback device. Ignore it for now. Notice that the second interface has the IP address 172.17.0.2, which is the same address shown for alpine1 in the previous step.
+
+From within alpine1, make sure you can connect to the internet by pinging google.com. The -c 2 flag limits the command two two ping attempts.
+
+# ping -c 2 google.com
+
+PING google.com (172.217.3.174): 56 data bytes
+64 bytes from 172.217.3.174: seq=0 ttl=41 time=9.841 ms
+64 bytes from 172.217.3.174: seq=1 ttl=41 time=9.897 ms
+
+--- google.com ping statistics ---
+2 packets transmitted, 2 packets received, 0% packet loss
+round-trip min/avg/max = 9.841/9.869/9.897 ms
+Now try to ping the second container. First, ping it by its IP address, 172.17.0.3:
+
+# ping -c 2 172.17.0.3
+
+PING 172.17.0.3 (172.17.0.3): 56 data bytes
+64 bytes from 172.17.0.3: seq=0 ttl=64 time=0.086 ms
+64 bytes from 172.17.0.3: seq=1 ttl=64 time=0.094 ms
+
+--- 172.17.0.3 ping statistics ---
+2 packets transmitted, 2 packets received, 0% packet loss
+round-trip min/avg/max = 0.086/0.090/0.094 ms
+This succeeds. Next, try pinging the alpine2 container by container name. This will fail.
+
+# ping -c 2 alpine2
+
+ping: bad address 'alpine2'
+Detach from alpine1 without stopping it by using the detach sequence, CTRL + p CTRL + q (hold down CTRL and type p followed by q). If you wish, attach to alpine2 and repeat steps 4, 5, and 6 there, substituting alpine1 for alpine2.
+
+41. Stop and remove both containers.
+
+$ docker container stop alpine1 alpine2
+$ docker container rm alpine1 alpine2
+Remember, the default bridge network is not recommended for production. To learn about user-defined bridge networks, continue to the next tutorial.
+
+Macvlan
+
+The goal of these tutorials is to set up a bridged macvlan network and attach a container to it, then set up an 802.1q trunked macvlan network and attach a container to it.
+The examples assume your ethernet interface is eth0. If your device has a different name, use that instead.
+
+Bridge example
+In the simple bridge example, your traffic flows through eth0 and Docker routes traffic to your container using its MAC address. To network devices on your network, your container appears to be physically attached to the network.
+
+42. Create a macvlan network called my-macvlan-net. Modify the subnet, gateway, and parent values to values that make sense in your environment.
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker network create -d macvlan   --subnet=172.16.86.0/24   --gateway=172.16.86.1   -o parent=enp0s31f6   my-macvlan-net
+f3031c7435c14afc8f85d1b6694f87ada7342ac42f753e48fd08404d8bff9e3a
+
+
+You can use docker network ls and docker network inspect my-macvlan-net commands to verify that the network exists and is a macvlan network.
+
+43. Start an alpine container and attach it to the my-macvlan-net network. The -dit flags start the container in the background but allow you to attach to it. The --rm flag means the container is removed when it is stopped.
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker run --rm -itd \
+>   --network my-macvlan-net \
+>   --name my-macvlan-alpine \
+>   alpine:latest \
+>   ash
+091de46272738b54f340e7df25dbc73e34d0fdc4cbb7562bf6128b0173839ba1
+
+44. Inspect the my-macvlan-alpine container and notice the MacAddress key within the Networks key:
+
+$ docker container inspect my-macvlan-alpine
+
+...truncated...
+"Networks": {
+  "my-macvlan-net": {
+      "IPAMConfig": null,
+      "Links": null,
+      "Aliases": [
+          "bec64291cd4c"
+      ],
+      "NetworkID": "5e3ec79625d388dbcc03dcf4a6dc4548644eb99d58864cf8eee2252dcfc0cc9f",
+      "EndpointID": "8caf93c862b22f379b60515975acf96f7b54b7cf0ba0fb4a33cf18ae9e5c1d89",
+      "Gateway": "172.16.86.1",
+      "IPAddress": "172.16.86.2",
+      "IPPrefixLen": 24,
+      "IPv6Gateway": "",
+      "GlobalIPv6Address": "",
+      "GlobalIPv6PrefixLen": 0,
+      "MacAddress": "02:42:ac:10:56:02",
+      "DriverOpts": null
+  }
+}
+...truncated
+
+45. Check out how the container sees its own network interfaces by running a couple of docker exec commands.
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker exec my-macvlan-alpine ip route
+default via 172.16.86.1 dev eth0 
+172.16.86.0/24 dev eth0 scope link  src 172.16.86.2 
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker exec my-macvlan-alpine ip addr show eth0
+67: eth0@if2: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP 
+    link/ether 02:42:ac:10:56:02 brd ff:ff:ff:ff:ff:ff
+    inet 172.16.86.2/24 brd 172.16.86.255 scope global eth0
+       valid_lft forever preferred_lft forever
+
+
+46. Stop the container (Docker removes it because of the --rm flag), and remove the network.
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker container stop my-macvlan-alpine
+my-macvlan-alpine
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker network rm my-macvlan-net
+my-macvlan-net
+
+
+
+802.1q trunked bridge example
+In the 802.1q trunked bridge example, your traffic flows through a sub-interface of eth0 (called eth0.10) and Docker routes traffic to your container using its MAC address. To network devices on your network, your container appears to be physically attached to the network.
+
+47. Create a macvlan network called my-8021q-macvlan-net. Modify the subnet, gateway, and parent values to values that make sense in your environment.
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker network create -d macvlan \
+>   --subnet=172.16.86.0/24 \
+>   --gateway=172.16.86.1 \
+>   -o parent=enp0s31f6.10 \
+>   my-8021q-macvlan-net
+06b6541657e457ce551dbaf3c7ac5f45487c937206bda4ae4ccc94d37aeb506b
+
+
+You can use docker network ls and docker network inspect my-8021q-macvlan-net commands to verify that the network exists, is a macvlan network, and has parent eth0.10. You can use ip addr show on the Docker host to verify that the interface eth0.10 exists and has a separate IP address
+
+48. Start an alpine container and attach it to the my-8021q-macvlan-net network. The -dit flags start the container in the background but allow you to attach to it. The --rm flag means the container is removed when it is stopped.
+
+$ docker run --rm -itd \
+  --network my-8021q-macvlan-net \
+  --name my-second-macvlan-alpine \
+  alpine:latest \
+  ash
+
+49. Inspect the my-second-macvlan-alpine container and notice the MacAddress key within the Networks key:
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker container inspect my-second-macvlan-alpine
+
+...truncated...
+"Networks": {
+  "my-8021q-macvlan-net": {
+      "IPAMConfig": null,
+      "Links": null,
+      "Aliases": [
+          "12f5c3c9ba5c"
+      ],
+      "NetworkID": "c6203997842e654dd5086abb1133b7e6df627784fec063afcbee5893b2bb64db",
+      "EndpointID": "aa08d9aa2353c68e8d2ae0bf0e11ed426ea31ed0dd71c868d22ed0dcf9fc8ae6",
+      "Gateway": "172.16.86.1",
+      "IPAddress": "172.16.86.2",
+      "IPPrefixLen": 24,
+      "IPv6Gateway": "",
+      "GlobalIPv6Address": "",
+      "GlobalIPv6PrefixLen": 0,
+      "MacAddress": "02:42:ac:10:56:02",
+      "DriverOpts": null
+  }
+}
+...truncated
+
+50. Check out how the container sees its own network interfaces by running a couple of docker exec commands.
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker exec my-second-macvlan-alpine ip addr show eth0
+69: eth0@if68: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP 
+    link/ether 02:42:ac:10:56:02 brd ff:ff:ff:ff:ff:ff
+    inet 172.16.86.2/24 brd 172.16.86.255 scope global eth0
+       valid_lft forever preferred_lft forever
+
+
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker exec my-second-macvlan-alpine ip route
+default via 172.16.86.1 dev eth0 
+172.16.86.0/24 dev eth0 scope link  src 172.16.86.2 
+
+51. Stop the container (Docker removes it because of the --rm flag), and remove the network.
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker container stop my-second-macvlan-alpine
+my-second-macvlan-alpine
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker$ docker network rm my-8021q-macvlan-net
+my-8021q-macvlan-net
