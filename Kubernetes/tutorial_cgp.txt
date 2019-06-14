@@ -1,0 +1,345 @@
+0. Git clone devacademy repository
+https://github.com/juanviz/devacademyDocker
+
+1. Create a gcloud cluster
+
+To launch Cloud Shell, perform the following steps:
+
+    Go to Google Cloud Platform Console.
+
+    Google Cloud Platform Console
+
+    From the top-right corner of the console, click the Activate Google Cloud Shell button:
+
+A Cloud Shell session opens inside a frame at the bottom of the console. You use this shell to run gcloud and kubectl commands.
+
+2. Set project just created
+youtube@cloudshell:~ (devacademy)$ gcloud config set project loyal-karma-198420
+Updated property [core/project].
+
+
+3. Set region of your project
+
+youtube@cloudshell:~ (loyal-karma-198420)$ gcloud config set compute/zone europe-west1-b
+Updated property [compute/zone]
+
+4. Create a Kubernetes cluster
+
+youtube@cloudshell:~ (loyal-karma-198420)$ gcloud container clusters create loyal-karma-198420
+
+WARNING: In June 2019, node auto-upgrade will be enabled by default for newly created clusters and node pools. To disable it, use the `--no-enable-autoupgrade` flag.
+WARNING: Starting in 1.12, new clusters will have basic authentication disabled by default. Basic authentication can be enabled (or disabled) manually using the `--[no-]enable-basic-auth` flag.
+WARNING: Starting in 1.12, new clusters will not have a client certificate issued. You can manually enable (or disable) the issuance of the client certificate using the `--[no-]issue-client-certificate` flag.
+WARNING: Currently VPC-native is not the default mode during cluster creation. In the future, this will become the default mode and can be disabled using `--no-enable-ip-alias` flag. Use `--[no-]enable-ip-alias` flag to suppress this warning.
+WARNING: Starting in 1.12, default node pools in new clusters will have their legacy Compute Engine instance metadata endpoints disabled by default. To create a cluster with legacy instance metadata endpoints disabled in the default node pool, run `clusters create` with the flag `--metadata disable-legacy-endpoints=true`.
+WARNING: Your Pod address range (`--cluster-ipv4-cidr`) can accommodate at most 1008 node(s).
+This will enable the autorepair feature for nodes. Please see https://cloud.google.com/kubernetes-engine/docs/node-auto-repair for more information on node autorepairs.
+Creating cluster loyal-karma-198420 in europe-west1-b...⠛
+.....
+Created [https://container.googleapis.com/v1/projects/loyal-karma-198420/zones/europe-west1-b/clusters/loyal-karma-198420].
+To inspect the contents of your cluster, go to: https://console.cloud.google.com/kubernetes/workload_/gcloud/europe-west1-b/loyal-karma-198420?project=loyal-karma-198420
+kubeconfig entry generated for loyal-karma-198420.
+NAME                LOCATION        MASTER_VERSION  MASTER_IP      MACHINE_TYPE   NODE_VERSION  NUM_NODES  STATUS
+loyal-karma-198420  europe-west1-b  1.12.8-gke.6    35.233.39.195  n1-standard-1  1.12.8-gke.6  3          RUNNING
+
+
+5. Set credentials into Kubeconfig
+
+youtube@cloudshell:~ (loyal-karma-198420)$ gcloud container clusters get-credentials loyal-karma-198420
+Fetching cluster endpoint and auth data.
+kubeconfig entry generated for loyal-karma-198420
+
+
+6. Create a deployment with hello-app google image 
+
+youtube@cloudshell:~ (loyal-karma-198420)$ kubectl run web --image=gcr.io/google-samples/hello-app:1.0 --port=8080
+kubectl run --generator=deployment/apps.v1beta1 is DEPRECATED and will be removed in a future version. Use kubectl create instead.
+deployment.apps/web created
+
+
+7. Expose web deployment just created
+
+youtube@cloudshell:~ (loyal-karma-198420)$ kubectl expose deployment web --target-port=8080 --type=NodePort
+service/web exposed
+
+8. Check service just exposed
+
+youtube@cloudshell:~ (loyal-karma-198420)$ kubectl get service web
+NAME   TYPE       CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
+web    NodePort   10.31.242.212   <none>        8080:31835/TCP   69s
+
+
+9. Create an ingress resource 
+
+Create a file called basic-ingress.yaml with the following content:
+youtube@cloudshell:~ (loyal-karma-198420)$ vi basic-ingress.yaml
+
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: basic-ingress
+spec:
+  backend:
+    serviceName: web
+    servicePort: 8080
+
+
+youtube@cloudshell:~ (loyal-karma-198420)$ kubectl apply -f basic-ingress.yaml
+ingress.extensions/basic-ingress created
+
+
+10. Check just created ingress resource
+
+youtube@cloudshell:~ (loyal-karma-198420)$ kubectl get ingress basic-ingress
+NAME            HOSTS   ADDRESS          PORTS   AGE
+basic-ingress   *       35.227.241.106   80      62s
+
+11. check the ip of the cluster for view nginx site
+
+http://35.227.241.106
+
+DaemonSet
+
+12. Create a DaemonSet based on the YAML file for install fluentd: 
+
+youtube@cloudshell:~ (loyal-karma-198420)$ kubectl create -f daemonset.yaml
+daemonset.apps/fluentd-elasticsearch created
+
+
+13. Check the status of the pod 
+
+$ kubectl get po -o wide --all-namespaces | grep fluent
+youtube@cloudshell:~ (loyal-karma-198420)$ kubectl get po -o wide --all-namespaces | grep fluent
+kube-system   fluentd-elasticsearch-6q2tf                                    1/1     Running   0          20s   10.28.1.4    gke-loyal-karma-198420-default-pool-b6e3c1c9-dxgm   <none>
+kube-system   fluentd-elasticsearch-85w6b                                    1/1     Running   0          20s   10.28.2.7    gke-loyal-karma-198420-default-pool-b6e3c1c9-p8ct   <none>
+kube-system   fluentd-elasticsearch-b2cbq                                    1/1     Running   0          20s   10.28.0.7    gke-loyal-karma-198420-default-pool-b6e3c1c9-ghnk   <none>
+kube-system   fluentd-gcp-scaler-7b895cbc89-fxcwt                            1/1     Running   0          30m   10.28.2.3    gke-loyal-karma-198420-default-pool-b6e3c1c9-p8ct   <none>
+kube-system   fluentd-gcp-v3.2.0-9l7hh                                       2/2     Running   0          30m   10.132.0.7   gke-loyal-karma-198420-default-pool-b6e3c1c9-ghnk   <none>
+kube-system   fluentd-gcp-v3.2.0-dms6g                                       2/2     Running   0          29m   10.132.0.6   gke-loyal-karma-198420-default-pool-b6e3c1c9-p8ct   <none>
+kube-system   fluentd-gcp-v3.2.0-xvxvp                                       2/2     Running   0          29m   10.132.0.8   gke-loyal-karma-198420-default-pool-b6e3c1c9-dxgm   <none>
+
+14. Resize the nodes in cluster to 3 
+
+youtube@cloudshell:~ (loyal-karma-198420)$ gcloud container clusters resize loyal-karma-198420  --size 3
+Pool [default-pool] for [loyal-karma-198420] will be resized to 3.
+
+Do you want to continue (Y/n)?  y
+
+Resizing loyal-karma-198420...done.
+Updated [https://container.googleapis.com/v1/projects/loyal-karma-198420/zones/europe-west1-b/clusters/loyal-karma-198420].
+
+
+15. Check that  in the new node there is a new pod of fluentd-elasticsearch etc...
+
+
+youtube@cloudshell:~ (loyal-karma-198420)$ kubectl  get po -o wide --namespace=kube-system | grep fluentd
+fluentd-elasticsearch-6q2tf                                    1/1     Running   0          7m2s   10.28.1.4    gke-loyal-karma-198420-default-pool-b6e3c1c9-dxgm   <none>
+fluentd-elasticsearch-85w6b                                    1/1     Running   0          7m2s   10.28.2.7    gke-loyal-karma-198420-default-pool-b6e3c1c9-p8ct   <none>
+fluentd-elasticsearch-b2cbq                                    1/1     Running   0          7m2s   10.28.0.7    gke-loyal-karma-198420-default-pool-b6e3c1c9-ghnk   <none>
+fluentd-gcp-scaler-7b895cbc89-fxcwt                            1/1     Running   0          37m    10.28.2.3    gke-loyal-karma-198420-default-pool-b6e3c1c9-p8ct   <none>
+fluentd-gcp-v3.2.0-9l7hh                                       2/2     Running   0          36m    10.132.0.7   gke-loyal-karma-198420-default-pool-b6e3c1c9-ghnk   <none>
+fluentd-gcp-v3.2.0-dms6g                                       2/2     Running   0          36m    10.132.0.6   gke-loyal-karma-198420-default-pool-b6e3c1c9-p8ct   <none>
+fluentd-gcp-v3.2.0-xvxvp                                       2/2     Running   0          36m    10.132.0.8   gke-loyal-karma-198420-default-pool-b6e3c1c9-dxgm   <none>
+
+
+Monitoring Install EFK
+16. Create a new namespace
+Create a new object file:
+
+vim kube-logging-ns.yaml
+Paste the following namespace configuration:
+
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: kube-logging
+
+Save the file, and create the namespace with:
+
+
+
+youtube@cloudshell:~ (loyal-karma-198420)$ kubectl create -f kube-logging-ns.yaml
+namespace/kube-logging createdConfirm that the namespace was created:
+
+
+17. Check if namespace kube-logging has been created
+
+kubectl get namespaces
+
+NAME           STATUS    AGE
+default        Active    1d
+kube-logging   Active    1m
+kube-public    Active    1d
+kube-system    Active    1d
+
+18. Deploying the EFK Stack
+We’re now ready to deploy our EFK-based logging solution using the Elastic GKE Logging app.
+
+In the GCP console, open the marketplace and search for “Elastic GKE Logging”. You will see only one choice — select it to see more information on the app:
+Hit the Configure button. You’ll now be presented with a short list of configuration options to customize the deployment process:
+Cluster – In case you have multiple Kubernetes clusters, select the relevant one for deploying the EFK Stack. In my case, I only have on running in my project so it’s selected by default.
+Namespace – For your namespace, be sure to select the kube-logging namespace you created in the previous step.
+App instance name – You can play around with the name for the deployment or simply go with the provided name.
+Elasticsearch replicas – The default number of replicas for the Elasticsearch ReplicaSet is 2 but for larger environments and production loads I would change this to a higher number.
+Fluentd Service Account – You can leave the default selection for the fluentd service account.
+Click the Deploy button when ready.
+
+GKE will deploy all the components in the app within the namespace and the cluster you defined and within a few minutes will present you with a summary of your deployment:
+
+19. Reviewing the deployment
+Before we take a look at our Kubernetes logs, let’s take a look at some of the objects created as part of the deployment.
+
+First, the deployment itself:
+
+youtube@cloudshell:~ (loyal-karma-198420)$ kubectl get deployment --namespace kube-logging
+NAME                           DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+elastic-gke-logging-1-kibana   1         1         1            0           6m35s
+
+We can take a closer look at the deployment configuration with:
+
+youtube@cloudshell:~ (loyal-karma-198420)$ kubectl describe deployment elastic-gke-logging-1 --namespace kube-logging
+Name:                   elastic-gke-logging-1-kibana
+Namespace:              kube-logging
+CreationTimestamp:      Wed, 12 Jun 2019 11:57:06 +0200
+Labels:                 app.kubernetes.io/component=kibana-server
+                        app.kubernetes.io/name=elastic-gke-logging-1
+Annotations:            deployment.kubernetes.io/revision: 2
+                        kubectl.kubernetes.io/last-applied-configuration:
+                          {"apiVersion":"apps/v1beta2","kind":"Deployment","metadata":{"annotations":{},"labels":{"app.kubernetes.io/component":"kibana-server","app...
+Selector:               app.kubernetes.io/component=kibana-server,app.kubernetes.io/name=elastic-gke-logging-1
+Replicas:               1 desired | 1 updated | 1 total | 0 available | 1 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:  app.kubernetes.io/component=kibana-server
+           app.kubernetes.io/name=elastic-gke-logging-1
+  Containers:
+   kibana:
+    Image:      gcr.io/cloud-marketplace/google/elastic-gke-logging/kibana@sha256:9a8205a575a9a8a4e6716dee05d03a7c9aa7ada53a88d2628c98e19c2e105ac6
+    Port:       5601/TCP
+    Host Port:  0/TCP
+    Liveness:   http-get http://:5601/api/status delay=5s timeout=1s period=10s #success=1 #failure=3
+    Readiness:  http-get http://:5601/api/status delay=5s timeout=1s period=10s #success=1 #failure=3
+    Environment:
+      ELASTICSEARCH_URL:    http://elastic-gke-logging-1-elasticsearch-svc:9200
+      KIBANA_DEFAULTAPPID:  discover
+    Mounts:                 <none>
+  Volumes:                  <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Progressing    True    NewReplicaSetAvailable
+  Available      False   MinimumReplicasUnavailable
+OldReplicaSets:  <none>
+NewReplicaSet:   elastic-gke-logging-1-kibana-644588dcb8 (1/1 replicas created)
+Events:
+  Type    Reason             Age    From                   Message
+  ----    ------             ----   ----                   -------
+  Normal  ScalingReplicaSet  5m33s  deployment-controller  Scaled up replica set elastic-gke-logging-1-kibana-796c48f49b to 1
+  Normal  ScalingReplicaSet  5m32s  deployment-controller  Scaled up replica set elastic-gke-logging-1-kibana-644588dcb8 to 1
+  Normal  ScalingReplicaSet  4m37s  deployment-controller  Scaled down replica set elastic-gke-logging-1-kibana-796c48f49b to 0
+
+20. Diving a bit deeper, we can see that the deployment consists of 3 Elasticsearch pods, a Kibana pod and 3 Fluentd pods deployed as part of the DaemonSet:
+
+youtube@cloudshell:~ (loyal-karma-198420)$ kubectl get pods --namespace kube-logging
+NAME                                            READY   STATUS      RESTARTS   AGE
+elastic-gke-logging-1-deployer-9w7cm            0/1     Completed   0          7m16s
+elastic-gke-logging-1-elasticsearch-0           1/1     Running     0          6m54s
+elastic-gke-logging-1-elasticsearch-1           1/1     Running     0          4m31s
+elastic-gke-logging-1-fluentd-es-98svx          1/1     Running     0          6m53s
+elastic-gke-logging-1-fluentd-es-h4hvn          1/1     Running     0          6m53s
+elastic-gke-logging-1-fluentd-es-xt7ns          1/1     Running     0          6m53s
+elastic-gke-logging-1-kibana-644588dcb8-bt26n   0/1     Running     3          6m53s
+elastic-gke-logging-1-kibana-init-job-jjt6b     0/1     Completed   0          6m53s
+
+The provided configurations applied to the deployment can be viewed with:
+
+
+youtube@cloudshell:~ (loyal-karma-198420)$ kubectl get configmap --namespace kube-logging
+NAME                                      DATA   AGE
+elastic-gke-logging-1-configmap           2      7m7s
+elastic-gke-logging-1-deployer-config     10     7m29s
+elastic-gke-logging-1-fluentd-es-config   4      7m7s
+elastic-gke-logging-1-kibana-configmap    6      7m6s
+
+A closer look at the fluentd ConfigMap reveals the provided log aggregation and processing applied as part of the deployment. Here’s an abbreviated version of this configuration:
+
+youtube@cloudshell:~ (loyal-karma-198420)$ kubectl describe configmap elastic-gke-logging-1-fluentd-es-config --namespace kube-logging
+Name:         elastic-gke-logging-1-fluentd-es-config
+Namespace:    kube-logging
+Labels:       app.kubernetes.io/component=fluentd-es-logging
+              app.kubernetes.io/name=elastic-gke-logging-1
+Annotations:  kubectl.kubernetes.io/last-applied-configuration:
+                {"apiVersion":"v1","data":{"containers.input.conf":"\u003csource\u003e\n  @id fluentd-containers.log\n  @type tail\n  path /var/log/contai...
+
+21. Accessing Kibana
+The app deploys two ClusterIP type services, one for Elasticsearch and one for Kibana. Elasticsearch is mapped to ports 9200/9300 and Kibana to port 5601:
+
+youtube@cloudshell:~ (loyal-karma-198420)$ kubectl get svc --namespace kube-logging
+NAME                                               TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)             AGE
+elastic-gke-logging-1-elasticsearch-exporter-svc   ClusterIP   None           <none>        9114/TCP            10m
+elastic-gke-logging-1-elasticsearch-svc            ClusterIP   10.31.252.31   <none>        9200/TCP,9300/TCP   10m
+elastic-gke-logging-1-kibana-svc                   ClusterIP   10.31.248.78   <none>        5601/TCP            10m
+
+22. As seen above, the Kibana service does not have an external IP so we need to expose Kibana to be able to access it. 
+
+youtube@cloudshell:~ (loyal-karma-198420)$ vi efk-ingress.yaml
+youtube@cloudshell:~ (loyal-karma-198420)$ kubectl create -f  efk-ingress.yaml               
+ingress.extensions/efk-ingress created
+
+23. Check public IP of load balancer just created
+
+youtube@cloudshell:~ (loyal-karma-198420)$ kubectl get services --all-namespaces | grep efk
+kube-logging         efk-public                                            LoadBalancer   10.31.245.180   35.233.55.11   80:31407/TCP        28m
+
+24. Access to Kibana Admin panel
+
+http://35.233.55.11
+
+
+Install Minecraft Server
+
+25. Create a new namespace minecraft
+
+youtube@cloudshell:~/minecraft (loyal-karma-198420)$ kubectl create namespace minecraft
+namespace/minecraft created
+
+
+26. Create the deployment
+
+youtube@cloudshell:~/minecraft (loyal-karma-198420)$ kubectl create -f deployment-minecraft.yaml --namespace=minecraft
+replicationcontroller/minecraft created
+
+
+
+27. Check the rc just created
+
+youtube@cloudshell:~/minecraft (loyal-karma-198420)$ kubectl get rc --namespace=minecraft
+NAME        DESIRED   CURRENT   READY   AGE
+minecraft   1         1         1       3m53s18. jvherrera@juanvi-HP-ZBook-14u-G5:~ kubectl 
+
+28. Check the pods of the minecraft replicaset
+
+youtube@cloudshell:~/minecraft (loyal-karma-198420)$ kubectl get po --namespace=minecraft
+NAME              READY   STATUS    RESTARTS   AGE
+minecraft-7hzb2   1/1     Running   0          4m35s
+
+
+29. Create the minecraft service
+
+youtube@cloudshell:~/minecraft (loyal-karma-198420)$ kubectl create -f service-minecraft.yaml --namespace=minecraft
+service/minecraft created
+
+30. Create the loadbalancer por access minecraft
+
+youtube@cloudshell:~/minecraft (loyal-karma-198420)$ kubectl create -f minecraft-ingress.yaml --namespace=minecraft
+ingress.extensions/ingress-minecraft created
+
+31. Get ip for load balancer just created and execute Minecraft client for check if works fine.
+
+youtube@cloudshell:~/minecraft (loyal-karma-198420)$ kubectl get services --all-namespaces | grep minecraft
+default       minecraft              LoadBalancer   10.152.183.70    
+35.205.158.140:25565      25565:31148/TCP     31h
+
+

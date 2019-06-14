@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: kibana-server
+    app.kubernetes.io/name: elastic-gke-logging-1
+  name: efk-public
+  namespace: kube-logging
+spec:
+  externalTrafficPolicy: Cluster
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 5601
+  selector:
+    app.kubernetes.io/component: kibana-server
+    app.kubernetes.io/name: elastic-gke-logging-1
+  sessionAffinity: None
+  type: LoadBalancer
+

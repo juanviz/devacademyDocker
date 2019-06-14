@@ -1,0 +1,1026 @@
+1. Get nodes of your Cluster 
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ microk8s.kubectl get nodes
+NAME                     STATUS     ROLES    AGE   VERSION
+juanvi-hp-zbook-14u-g5   NotReady   <none>   12d   v1.14.1
+
+2. Deploy a pod with nginx server listening in port 80
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ microk8s.kubectl run mynginx --image=nginx --port=80
+kubectl run --generator=deployment/apps.v1 is DEPRECATED and will be removed in a future version. Use kubectl run --generator=run-pod/v1 or kubectl create instead.
+deployment.apps/mynginx created
+
+3. Get current deployments
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ microk8s.kubectl get deploy
+NAME      READY   UP-TO-DATE   AVAILABLE   AGE
+demo      1/1     1            1           11d
+mynginx   1/1     1            1           33s
+nginx     1/1     1            1           10d
+
+4. Get current pods 
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ microk8s.kubectl get pods
+NAME                       READY   STATUS    RESTARTS   AGE
+demo-5c7f865655-j8hf9      1/1     Running   2          10d
+mynginx-74bc69fc95-9zb8p   1/1     Running   0          45s
+nginx-7db9fccd9b-vzqjk     1/1     Running   2          10d
+nginx-fb6wc                1/1     Running   2          10d
+nginx-pgmgm                1/1     Running   2          10d
+nginx-psjwt                1/1     Running   2          10d
+task-pv-pod                1/1     Running   2          9d
+web-0                      1/1     Running   2          9d
+web-1                      1/1     Running   2          9d
+
+5. Create a pod with flask-demo app
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Docker$ microk8s.kubectl  run demo --image=juanviz/flask-demo
+kubectl run --generator=deployment/apps.v1 is DEPRECATED and will be removed in a future version. Use kubectl run --generator=run-pod/v1 or kubectl create instead.
+deployment.apps/demo created
+
+6. Check status of the pods until new one has been created
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Docker$ microk8s.kubectl  get pods -w
+NAME                    READY   STATUS    RESTARTS   AGE
+demo-5c7f865655-w5v4v   1/1     Running   0          32s
+
+7. Expose the webserver in public port 80 
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ microk8s.kubectl expose deploy mynginx --type=NodePort
+service/mynginx exposed
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ microk8s.kubectl describe services
+Name:              kubernetes
+Namespace:         default
+Labels:            component=apiserver
+                   provider=kubernetes
+Annotations:       <none>
+Selector:          <none>
+Type:              ClusterIP
+IP:                10.152.183.1
+Port:              https  443/TCP
+TargetPort:        16443/TCP
+Endpoints:         192.168.1.115:16443
+Session Affinity:  None
+Events:            <none>
+
+
+Name:                     mynginx
+Namespace:                default
+Labels:                   run=mynginx
+Annotations:              <none>
+Selector:                 run=mynginx
+Type:                     NodePort
+IP:                       10.152.183.68
+Port:                     <unset>  80/TCP
+TargetPort:               80/TCP
+NodePort:                 <unset>  32096/TCP
+Endpoints:                10.1.1.14:80
+Session Affinity:         None
+External Traffic Policy:  Cluster
+Events:                   <none>
+
+
+
+8. Acces to the K8s dashboard
+
+Moreover, if you enter ifconfig, you'll see that a lot of interfaces have been added to your system. As the K8s environment has a unique IP addressing scheme, you'll need to set up a proxy to pass requests to access the Dashboard, which you can do by entering microk8s.kubectl proxy --accept-hosts=.* --address=0.0.0.0 &. Note that the & at the end of this command string will run the command in the background.
+
+You can then enter the following in a Web browser to access the Dashboard:
+
+
+http://{Ubuntu_IP_address}:8001/api/v1/namespaces/kube-system/services/https:kubernetes-dashboard:/proxy/
+
+
+9. Create a replication controller of 3 nginx replicas exposed in port 80
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes$ microk8s.kubectl create -f replication.yaml
+replicationcontroller/nginx created
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ microk8s.kubectl describe rc/nginx
+Name:         nginx
+Namespace:    default
+Selector:     app=nginx
+Labels:       app=nginx
+Annotations:  <none>
+Replicas:     3 current / 3 desired
+Pods Status:  3 Running / 0 Waiting / 0 Succeeded / 0 Failed
+Pod Template:
+  Labels:  app=nginx
+  Containers:
+   nginx:
+    Image:        nginx
+    Port:         80/TCP
+    Host Port:    0/TCP
+    Environment:  <none>
+    Mounts:       <none>
+  Volumes:        <none>
+Events:
+  Type    Reason            Age   From                    Message
+  ----    ------            ----  ----                    -------
+  Normal  SuccessfulCreate  28s   replication-controller  Created pod: nginx-fb6wc
+  Normal  SuccessfulCreate  28s   replication-controller  Created pod: nginx-psjwt
+  Normal  SuccessfulCreate  28s   replication-controller  Created pod: nginx-pgmgm
+
+10. Scale down nginx rc to 2 replicas
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes$ microk8s.kubectl scale rc nginx --replicas=2
+replicationcontroller/nginx scaled
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes$ microk8s.kubectl describe rc/nginx
+Name:         nginx
+Namespace:    default
+Selector:     app=nginx
+Labels:       app=nginx
+Annotations:  <none>
+Replicas:     2 current / 2 desired
+Pods Status:  3 Running / 0 Waiting / 0 Succeeded / 0 Failed
+Pod Template:
+  Labels:  app=nginx
+  Containers:
+   nginx:
+    Image:        nginx
+    Port:         80/TCP
+    Host Port:    0/TCP
+    Environment:  <none>
+    Mounts:       <none>
+  Volumes:        <none>
+Events:
+  Type    Reason            Age   From                    Message
+  ----    ------            ----  ----                    -------
+  Normal  SuccessfulCreate  14m   replication-controller  Created pod: nginx-c6s27
+  Normal  SuccessfulCreate  14m   replication-controller  Created pod: nginx-glh7w
+  Normal  SuccessfulCreate  14m   replication-controller  Created pod: nginx-k2hv4
+  Normal  SuccessfulDelete  5s    replication-controller  Deleted pod: nginx-k2hv4
+
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes$ microk8s.kubectl describe rc/nginx
+Name:         nginx
+Namespace:    default
+Selector:     app=nginx
+Labels:       app=nginx
+Annotations:  <none>
+Replicas:     2 current / 2 desired
+Pods Status:  2 Running / 0 Waiting / 0 Succeeded / 0 Failed
+Pod Template:
+  Labels:  app=nginx
+  Containers:
+   nginx:
+    Image:        nginx
+    Port:         80/TCP
+    Host Port:    0/TCP
+    Environment:  <none>
+    Mounts:       <none>
+  Volumes:        <none>
+Events:
+  Type    Reason            Age   From                    Message
+  ----    ------            ----  ----                    -------
+  Normal  SuccessfulCreate  14m   replication-controller  Created pod: nginx-c6s27
+  Normal  SuccessfulCreate  14m   replication-controller  Created pod: nginx-glh7w
+  Normal  SuccessfulCreate  14m   replication-controller  Created pod: nginx-k2hv4
+  Normal  SuccessfulDelete  17s   replication-controller  Deleted pod: nginx-k2hv4
+microk8s.kubectl scale rc nginx --replicas=3
+
+11. Scale up nginx rc to 4 replicas
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ microk8s.kubectl scale rc nginx --replicas=4
+replicationcontroller/nginx scaled
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ microk8s.kubectl describe rc/nginx
+Name:         nginx
+Namespace:    default
+Selector:     app=nginx
+Labels:       app=nginx
+Annotations:  <none>
+Replicas:     4 current / 4 desired
+Pods Status:  3 Running / 1 Waiting / 0 Succeeded / 0 Failed
+Pod Template:
+  Labels:  app=nginx
+  Containers:
+   nginx:
+    Image:        nginx
+    Port:         80/TCP
+    Host Port:    0/TCP
+    Environment:  <none>
+    Mounts:       <none>
+  Volumes:        <none>
+Events:
+  Type    Reason            Age    From                    Message
+  ----    ------            ----   ----                    -------
+  Normal  SuccessfulCreate  3m11s  replication-controller  Created pod: nginx-fb6wc
+  Normal  SuccessfulCreate  3m11s  replication-controller  Created pod: nginx-psjwt
+  Normal  SuccessfulCreate  3m11s  replication-controller  Created pod: nginx-pgmgm
+  Normal  SuccessfulCreate  2s     replication-controller  Created pod: nginx-b2z6p
+
+
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ k apply -f controllers/replication.yaml 
+Warning: kubectl apply should be used on resource created by either kubectl create --save-config or kubectl apply
+replicationcontroller/nginx configured
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ microk8s.kubectl describe rc/nginx
+Name:         nginx
+Namespace:    default
+Selector:     app=nginx
+Labels:       app=nginx
+Annotations:  kubectl.kubernetes.io/last-applied-configuration:
+                {"apiVersion":"v1","kind":"ReplicationController","metadata":{"annotations":{},"name":"nginx","namespace":"default"},"spec":{"replicas":3,...
+Replicas:     3 current / 3 desired
+Pods Status:  3 Running / 1 Waiting / 0 Succeeded / 0 Failed
+Pod Template:
+  Labels:  app=nginx
+  Containers:
+   nginx:
+    Image:        nginx
+    Port:         80/TCP
+    Host Port:    0/TCP
+    Environment:  <none>
+    Mounts:       <none>
+  Volumes:        <none>
+Events:
+  Type    Reason            Age   From                    Message
+  ----    ------            ----  ----                    -------
+  Normal  SuccessfulCreate  4m4s  replication-controller  Created pod: nginx-fb6wc
+  Normal  SuccessfulCreate  4m4s  replication-controller  Created pod: nginx-psjwt
+  Normal  SuccessfulCreate  4m4s  replication-controller  Created pod: nginx-pgmgm
+  Normal  SuccessfulCreate  55s   replication-controller  Created pod: nginx-b2z6p
+  Normal  SuccessfulDelete  11s   replication-controller  Deleted pod: nginx-b2z6p
+
+12. Get ips of pods and services exposed 
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ k get pods -l run=mynginx -o wide
+NAME                       READY   STATUS    RESTARTS   AGE   IP          NODE                     NOMINATED NODE   READINESS GATES
+mynginx-74bc69fc95-ttk5l   1/1     Running   0          46m   10.1.1.14   juanvi-hp-zbook-14u-g5   <none>           <none>
+
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ k get pods -l run=mynginx -o yaml | grep podIP
+    podIP: 10.1.1.14
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ k get pods -l app=nginx -o yaml | grep podIP
+    podIP: 10.1.1.20
+    podIP: 10.1.1.22
+    podIP: 10.1.1.21
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ k  get svc
+NAME         TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE
+kubernetes   ClusterIP   10.152.183.1    <none>        443/TCP        2d17h
+mynginx      NodePort    10.152.183.68   <none>        80:32096/TCP   47m
+
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ k describe svc mynginx
+Name:                     mynginx
+Namespace:                default
+Labels:                   run=mynginx
+Annotations:              <none>
+Selector:                 run=mynginx
+Type:                     NodePort
+IP:                       10.152.183.68
+Port:                     <unset>  80/TCP
+TargetPort:               80/TCP
+NodePort:                 <unset>  32096/TCP
+Endpoints:                10.1.1.14:80
+Session Affinity:         None
+External Traffic Policy:  Cluster
+Events:                   <none>
+
+
+13. Create a storage-class and pv volume 
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes$ k create  -f basics/storageClass.yaml
+
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ k create -f basics/pv-volume.yaml 
+persistentvolume/task-pv-volume created
+
+14. Check if storage class and volume have been created succesfully and their status
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes$ k get storageclass
+NAME            PROVISIONER                    AGE
+local-storage   kubernetes.io/no-provisioner   15d
+
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes$ k get pv
+NAME             CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM   STORAGECLASS    REASON   AGE
+task-pv-volume   1Gi        RWO            Retain           Available           local-storage            3s
+              29s
+
+15. Create a pv claim for claim the storage class just created
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ k create -f basics/pv-claim.yaml 
+pv-claim/task-pv-claim created
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes$ k get pv task-pv-volume
+NAME             CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM   STORAGECLASS    REASON   AGE
+task-pv-volume   1Gi        RWO            Retain           Available           local-storage            60s
+                  3m56s
+
+16. Create a pod that use the pv-claim just created.
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ k create -f basics/pv-pod.yaml 
+pod/task-pv-pod created
+
+17. Check the pod has been created succesfully
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes$ k get po task-pv-pod
+NAME          READY   STATUS    RESTARTS   AGE
+task-pv-pod   1/1     Running   0          16s
+
+18. Create a file in the local directory that is defined in the creation of the pv
+
+jvherrera@juanvi-HP-ZBook-14u-G5:/mnt/data$ sudo vi index.html
+[sudo] password for jvherrera: 
+
+19. Open a shell in the pod and check the file index.html just created is available by http.
+
+jvherrera@juanvi-HP-ZBook-14u-G5:/mnt/data$ k exec -it task-pv-pod  bash
+root@task-pv-pod:/# curl localhost
+sdasd
+
+
+20. Create a secret with a variable of an apikey from a literal
+
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ k create secret generic apikey --from-literal=API_KEY=123456
+secret/apikey created
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ k describe secret apikey
+Name:         apikey
+Namespace:    default
+Labels:       <none>
+Annotations:  <none>
+
+Type:  Opaque
+
+Data
+====
+API_KEY:  6 bytes
+
+21. Create a configmap with a variable of the language from a literal
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ k create configmap language --from-literal=LANGUAGE=English
+configmap/language created
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ k describe configmap language
+Name:         language
+Namespace:    default
+Labels:       <none>
+Annotations:  <none>
+
+Data
+====
+LANGUAGE:
+----
+English
+Events:  <none>
+
+22. Create a deployment with nginx that use the configmap just created.
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ k create -f controllers/configmap.yaml 
+deployment.apps/mynginx created
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ k describe deploy mynginx
+Name:                   mynginx
+Namespace:              default
+CreationTimestamp:      Sun, 26 May 2019 16:51:35 +0200
+Labels:                 <none>
+Annotations:            deployment.kubernetes.io/revision: 1
+Selector:               run=mynginx
+Replicas:               1 desired | 1 updated | 1 total | 1 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:  run=mynginx
+  Containers:
+   mynginx:
+    Image:      nginx
+    Port:       80/TCP
+    Host Port:  0/TCP
+    Environment:
+      LANGUAGE:  <set to the key 'LANGUAGE' of config map 'language'>  Optional: false
+      API_KEY:   <set to the key 'API_KEY' in secret 'apikey'>         Optional: false
+    Mounts:      <none>
+  Volumes:       <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Available      True    MinimumReplicasAvailable
+  Progressing    True    NewReplicaSetAvailable
+OldReplicaSets:  <none>
+NewReplicaSet:   mynginx-8546475449 (1/1 replicas created)
+Events:
+  Type    Reason             Age   From                   Message
+  ----    ------             ----  ----                   -------
+  Normal  ScalingReplicaSet  23s   deployment-controller  Scaled up replica set mynginx-8546475449 to 1
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ k label pods --all status=unhealthy
+pod/demo-5c7f865655-j8hf9 labeled
+pod/mynginx-8546475449-24986 labeled
+pod/nginx-7db9fccd9b-vzqjk labeled
+pod/nginx-fb6wc labeled
+pod/nginx-pgmgm labeled
+pod/nginx-psjwt labeled
+pod/task-pv-pod labeled
+
+23. Change the label "status" to all of the pods to "healthy" value
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ k label pods --all status=healthy
+'status' already has a value (unhealthy), and --overwrite is false
+'status' already has a value (unhealthy), and --overwrite is false
+'status' already has a value (unhealthy), and --overwrite is false
+'status' already has a value (unhealthy), and --overwrite is false
+'status' already has a value (unhealthy), and --overwrite is false
+'status' already has a value (unhealthy), and --overwrite is false
+'status' already has a value (unhealthy), and --overwrite is false
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ k label pods --all --overwrite status=healthy
+pod/demo-5c7f865655-j8hf9 labeled
+pod/mynginx-8546475449-24986 labeled
+pod/nginx-7db9fccd9b-vzqjk labeled
+pod/nginx-fb6wc labeled
+pod/nginx-pgmgm labeled
+pod/nginx-psjwt labeled
+pod/task-pv-pod labeled
+
+
+
+24. Check the new value of the label in any pod.
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ k describe po mynginx
+Name:               mynginx-8546475449-24986
+Namespace:          default
+Priority:           0
+PriorityClassName:  <none>
+Node:               juanvi-hp-zbook-14u-g5/192.168.1.115
+Start Time:         Sun, 26 May 2019 16:51:35 +0200
+Labels:             pod-template-hash=8546475449
+                    run=mynginx
+                    status=healthy
+Annotations:        <none>
+Status:             Running
+IP:                 10.1.1.25
+Controlled By:      ReplicaSet/mynginx-8546475449
+Containers:
+  mynginx:
+    Container ID:   containerd://53a2e514637062c5f8bc5c63691e2a7d97f449dc4478176cdad037023863ee90
+    Image:          nginx
+    Image ID:       docker.io/library/nginx@sha256:23b4dcdf0d34d4a129755fc6f52e1c6e23bb34ea011b315d87e193033bcd1b68
+    Port:           80/TCP
+    Host Port:      0/TCP
+    State:          Running
+      Started:      Sun, 26 May 2019 16:51:38 +0200
+    Ready:          True
+    Restart Count:  0
+    Environment:
+      LANGUAGE:  <set to the key 'LANGUAGE' of config map 'language'>  Optional: false
+      API_KEY:   <set to the key 'API_KEY' in secret 'apikey'>         Optional: false
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from default-token-8rh68 (ro)
+Conditions:
+  Type              Status
+  Initialized       True 
+  Ready             True 
+  ContainersReady   True 
+  PodScheduled      True 
+Volumes:
+  default-token-8rh68:
+    Type:        Secret (a volume populated by a Secret)
+    SecretName:  default-token-8rh68
+    Optional:    false
+QoS Class:       BestEffort
+Node-Selectors:  <none>
+Tolerations:     node.kubernetes.io/not-ready:NoExecute for 300s
+                 node.kubernetes.io/unreachable:NoExecute for 300s
+Events:
+  Type    Reason     Age   From                             Message
+  ----    ------     ----  ----                             -------
+  Normal  Scheduled  37m   default-scheduler                Successfully assigned default/mynginx-8546475449-24986 to juanvi-hp-zbook-14u-g5
+  Normal  Pulling    37m   kubelet, juanvi-hp-zbook-14u-g5  Pulling image "nginx"
+  Normal  Pulled     37m   kubelet, juanvi-hp-zbook-14u-g5  Successfully pulled image "nginx"
+  Normal  Created    37m   kubelet, juanvi-hp-zbook-14u-g5  Created container mynginx
+  Normal  Started    37m   kubelet, juanvi-hp-zbook-14u-g5  Started container mynginx
+
+25. Get all of the namespaces
+
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes$ k get namespaces
+
+NAME              STATUS   AGE
+default           Active   2d23h
+kube-node-lease   Active   2d23h
+kube-public       Active   2d23h
+kube-system       Active   2d23h
+
+
+
+26. Create a new namespace  named development
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes$ k create namespace development
+
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$  k get namespaces
+
+NAME              STATUS   AGE
+default           Active   12d
+development       Active   9d
+kube-node-lease   Active   12d
+kube-public       Active   12d
+kube-system       Active   12d
+
+27. Create a new deployment "nginx-dev" in the namespace development just created 
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ k --namespace=development  run nginx-dev --image nginx
+kubectl run --generator=deployment/apps.v1 is DEPRECATED and will be removed in a future version. Use kubectl run --generator=run-pod/v1 or kubectl create instead.
+deployment.apps/nginx-dev created
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ k --namespace=development  get po
+NAME                         READY   STATUS    RESTARTS   AGE
+nginx-dev-8544d686cb-rhszt   1/1     Running   0          19s
+
+28. Create two new pv-volumes of 1 Gb
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ k create -f controllers/pv-volume2.yaml 
+persistentvolume/task-pv-volume-2 created
+
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ k create -f controllers/pv-volume3.yaml 
+persistentvolume/task-pv-volume-3 created
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ k get pv
+NAME               CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM                   STORAGECLASS   REASON   AGE
+task-pv-volume     1Gi        RWO            Retain           Bound       default/task-pv-claim   manual                  6h5m
+task-pv-volume-2   1Gi        RWO            Retain           Available                           manual                  4s
+task-pv-volume-3   1Gi        RWO            Retain           Available                           manual                  7m56s
+
+
+29. Ingress
+
+
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ k get service nginx
+NAME    TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+nginx   ClusterIP   None         <none>        80/TCP    15d
+
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes$ k apply -f basic-ingress.yaml
+ingress.extensions/ingress-resource created
+
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes$ k get ing ingress-resource
+NAME               HOSTS   ADDRESS   PORTS   AGE
+ingress-resource   *                 80      56s
+
+
+30. First, we will start a deployment running the image and expose it as a service:
+
+kubectl run php-apache --image=k8s.gcr.io/hpa-example --requests=cpu=200m --expose --port=80
+service/php-apache created
+deployment.apps/php-apache created
+
+31. Now that the server is running, we will create the autoscaler using kubectl autoscale. The following command will create a Horizontal Pod Autoscaler that maintains between 1 and 10 replicas of the Pods controlled by the php-apache deployment we created in the first step of these instructions. Roughly speaking, HPA will increase and decrease the number of replicas (via the deployment) to maintain an average CPU utilization across all Pods of 50% (since each pod requests 200 milli-cores by kubectl run, this means average CPU usage of 100 milli-cores). See here for more details on the algorithm.
+
+kubectl autoscale deployment php-apache --cpu-percent=50 --min=1 --max=10
+horizontalpodautoscaler.autoscaling/php-apache autoscaled
+We may check the current status of autoscaler by running:
+
+kubectl get hpa
+NAME         REFERENCE                     TARGET    MINPODS   MAXPODS   REPLICAS   AGE
+php-apache   Deployment/php-apache/scale   0% / 50%  1         10        1          18s
+
+
+
+32. Now, we will see how the autoscaler reacts to increased load. We will start a container, and send an infinite loop of queries to the php-apache service (please run it in a different terminal):
+
+kubectl run -i --tty load-generator --image=busybox /bin/sh
+
+Hit enter for command prompt
+
+while true; do wget -q -O- http://php-apache.default.svc.cluster.local; done
+Within a minute or so, we should see the higher CPU load by executing:
+
+kubectl get hpa
+NAME         REFERENCE                     TARGET      CURRENT   MINPODS   MAXPODS   REPLICAS   AGE
+php-apache   Deployment/php-apache/scale   305% / 50%  305%      1         10        1          3m
+
+33. Here, CPU consumption has increased to 305% of the request. As a result, the deployment was resized to 7 replicas:
+
+kubectl get deployment php-apache
+NAME         DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+php-apache   7         7         7            7           19m
+
+34. We will finish our example by stopping the user load.
+
+In the terminal where we created the container with busybox image, terminate the load generation by typing <Ctrl> + C.
+
+Then we will verify the result state (after a minute or so):
+
+kubectl get hpa
+NAME         REFERENCE                     TARGET       MINPODS   MAXPODS   REPLICAS   AGE
+php-apache   Deployment/php-apache/scale   0% / 50%     1         10        1          11m
+kubectl get deployment php-apache
+NAME         DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+php-apache   1         1         1            1           27m
+
+Replicaset
+
+35.  Submitting it to a Kubernetes cluster will create the defined ReplicaSet and the Pods that it manages.
+
+kubectl apply -f https://kubernetes.io/examples/controllers/frontend.yaml
+
+You can then get the current ReplicaSets deployed:
+
+kubectl get rs
+And see the frontend one you created:
+
+NAME       DESIRED   CURRENT   READY   AGE
+frontend   3         3         3       6s
+You can also check on the state of the replicaset:
+
+kubectl describe rs/frontend
+
+And lastly you can check for the Pods brought up:
+
+kubectl get Pods
+You should see Pod information similar to:
+
+NAME             READY     STATUS    RESTARTS   AGE
+frontend-9si5l   1/1       Running   0          1m
+frontend-dnjpy   1/1       Running   0          1m
+frontend-qhloh   1/1       Running   0          1m
+
+You can also verify that the owner reference of these pods is set to the frontend ReplicaSet. To do this, get the yaml of one of the Pods running:
+
+kubectl get pods frontend-9si5l -o yaml
+
+Deployment
+
+36. To create this Deployment, run the following command:
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes/controllers$ k create -f nginx-deployment.yaml 
+deployment.apps/nginx-deployment created
+Next, run kubectl get deployments. The output is similar to the following:
+
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   3         0         0            0           1s
+
+37. To see the Deployment rollout status, run kubectl rollout status deployment.v1.apps/nginx-deployment. This command returns the following output:
+
+Waiting for rollout to finish: 2 out of 3 new replicas have been updated...
+deployment.apps/nginx-deployment successfully rolled out
+Run the kubectl get deployments again a few seconds later:
+
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   3         3         3            3           18s
+
+38. To see the ReplicaSet (rs) created by the deployment, run kubectl get rs:
+
+NAME                          DESIRED   CURRENT   READY   AGE
+nginx-deployment-75675f5897   3         3         3       18s
+Notice that the name of the ReplicaSet is always formatted as [DEPLOYMENT-NAME]-[RANDOM-STRING]. The random string is randomly generated and uses the pod-template-hash as a seed.
+
+To see the labels automatically generated for each pod, run kubectl get pods --show-labels. The following output is returned:
+
+NAME                                READY     STATUS    RESTARTS   AGE       LABELS
+nginx-deployment-75675f5897-7ci7o   1/1       Running   0          18s       app=nginx,pod-template-hash=3123191453
+nginx-deployment-75675f5897-kzszj   1/1       Running   0          18s       app=nginx,pod-template-hash=3123191453
+nginx-deployment-75675f5897-qqcnn   1/1       Running   0          18s       app=nginx,pod-template-hash=3123191453
+The created ReplicaSet ensures that there are three nginx Pods running at all times.
+
+39. Suppose that you now want to update the nginx Pods to use the nginx:1.9.1 image instead of the nginx:1.7.9 image.
+
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes/controllers$ k describe deploy nginx-deployment
+Name:                   nginx-deployment
+Namespace:              default
+CreationTimestamp:      Tue, 11 Jun 2019 12:37:57 +0200
+Labels:                 app=nginx
+Annotations:            deployment.kubernetes.io/revision: 1
+Selector:               app=nginx
+Replicas:               3 desired | 3 updated | 3 total | 3 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:  app=nginx
+  Containers:
+   nginx:
+    Image:        nginx:1.7.9
+    Port:         80/TCP
+    Host Port:    0/TCP
+    Environment:  <none>
+    Mounts:       <none>
+  Volumes:        <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Available      True    MinimumReplicasAvailable
+  Progressing    True    NewReplicaSetAvailable
+OldReplicaSets:  <none>
+NewReplicaSet:   nginx-deployment-6dd86d77d (3/3 replicas created)
+Events:
+  Type    Reason             Age   From                   Message
+  ----    ------             ----  ----                   -------
+  Normal  ScalingReplicaSet  12s   deployment-controller  Scaled up replica set nginx-deployment-6dd86d77d to 3
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes/controllers$ 
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes/controllers$ k rollout status deployment/nginx-deployment
+deployment "nginx-deployment" successfully rolled out
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes/controllers$ k describe deployment/nginx-deployment
+Name:                   nginx-deployment
+Namespace:              default
+CreationTimestamp:      Tue, 11 Jun 2019 12:37:57 +0200
+Labels:                 app=nginx
+Annotations:            deployment.kubernetes.io/revision: 1
+Selector:               app=nginx
+Replicas:               3 desired | 3 updated | 3 total | 3 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:  app=nginx
+  Containers:
+   nginx:
+    Image:        nginx:1.7.9
+    Port:         80/TCP
+    Host Port:    0/TCP
+    Environment:  <none>
+    Mounts:       <none>
+  Volumes:        <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Available      True    MinimumReplicasAvailable
+  Progressing    True    NewReplicaSetAvailable
+OldReplicaSets:  <none>
+NewReplicaSet:   nginx-deployment-6dd86d77d (3/3 replicas created)
+Events:
+  Type    Reason             Age   From                   Message
+  ----    ------             ----  ----                   -------
+  Normal  ScalingReplicaSet  52s   deployment-controller  Scaled up replica set nginx-deployment-6dd86d77d to 3
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes/controllers$ k set image deployment/nginx-deployment nginx=nginx
+deployment.extensions/nginx-deployment image updated
+
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes/controllers$ k rollout status deployment/nginx-deployment
+deployment "nginx-deployment" successfully rolled out
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes/controllers$ k describe deployment/nginx-deployment
+Name:                   nginx-deployment
+Namespace:              default
+CreationTimestamp:      Tue, 11 Jun 2019 12:37:57 +0200
+Labels:                 app=nginx
+Annotations:            deployment.kubernetes.io/revision: 2
+Selector:               app=nginx
+Replicas:               3 desired | 3 updated | 3 total | 3 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:  app=nginx
+  Containers:
+   nginx:
+    Image:        nginx
+    Port:         80/TCP
+    Host Port:    0/TCP
+    Environment:  <none>
+    Mounts:       <none>
+  Volumes:        <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Available      True    MinimumReplicasAvailable
+  Progressing    True    NewReplicaSetAvailable
+OldReplicaSets:  <none>
+NewReplicaSet:   nginx-deployment-5f88c697f (3/3 replicas created)
+Events:
+  Type    Reason             Age    From                   Message
+  ----    ------             ----   ----                   -------
+  Normal  ScalingReplicaSet  2m12s  deployment-controller  Scaled up replica set nginx-deployment-6dd86d77d to 3
+  Normal  ScalingReplicaSet  16s    deployment-controller  Scaled up replica set nginx-deployment-5f88c697f to 1
+  Normal  ScalingReplicaSet  15s    deployment-controller  Scaled down replica set nginx-deployment-6dd86d77d to 2
+  Normal  ScalingReplicaSet  15s    deployment-controller  Scaled up replica set nginx-deployment-5f88c697f to 2
+  Normal  ScalingReplicaSet  13s    deployment-controller  Scaled down replica set nginx-deployment-6dd86d77d to 1
+  Normal  ScalingReplicaSet  13s    deployment-controller  Scaled up replica set nginx-deployment-5f88c697f to 3
+  Normal  ScalingReplicaSet  11s    deployment-controller  Scaled down replica set nginx-deployment-6dd86d77d to 0
+
+
+40. If you want to delete all of the resources created by the deployment:
+
+k delete deploy -all
+
+41. Create a statefulset called web of an nginx service with 2 replicas and theirs volumes-claims of 1 GB
+
+*******************************
+(If you are executing that in minikube or microk8s you have to create manually the volumes)
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes$ k create -f basics/pv-volume2.yaml 
+persistentvolume/task-pv-volume-2 created
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes$ k create -f basics/pv-volume3.yaml 
+persistentvolume/task-pv-volume-3 created
+*******************************
+
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ k create -f controllers/statefulset.yaml 
+service/nginx created
+statefulset.apps/web created
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ k get po
+NAME                       READY   STATUS              RESTARTS   AGE
+demo-5c7f865655-j8hf9      1/1     Running             0          7h9m
+mynginx-8546475449-24986   1/1     Running             0          80m
+nginx-7db9fccd9b-vzqjk     1/1     Running             0          7h9m
+nginx-fb6wc                1/1     Running             0          6h28m
+nginx-pgmgm                1/1     Running             0          6h28m
+nginx-psjwt                1/1     Running             0          6h28m
+task-pv-pod                1/1     Running             0          5h59m
+web-0                      0/1     ContainerCreating   0          3s
+
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~$ k get po
+NAME                       READY   STATUS    RESTARTS   AGE
+demo-5c7f865655-j8hf9      1/1     Running   0          8h
+mynginx-8546475449-24986   1/1     Running   0          147m
+nginx-7db9fccd9b-vzqjk     1/1     Running   0          8h
+nginx-fb6wc                1/1     Running   0          7h34m
+nginx-pgmgm                1/1     Running   0          7h34m
+nginx-psjwt                1/1     Running   0          7h34m
+task-pv-pod                1/1     Running   0          7h6m
+web-0                      1/1     Running   0          67m
+web-1                      1/1     Running   0          59m
+
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes$ k get statefulset
+NAME   READY   AGE
+web    2/2     9d
+
+42. Scale up to 2 replicas the stateful "web" just created
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes$ k patch statefulsets web -p '{"spec":{"replicas":2}}'
+statefulset.apps/web patched
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes$ k get po
+NAME                               READY   STATUS              RESTARTS   AGE
+apache-745cf6dbdf-924cz            1/1     Running             6          27h
+demo-5c7f865655-j8hf9              1/1     Running             16         16d
+load-generator-7fbcc7489f-pvww7    1/1     Running             7          26h
+mynginx-74bc69fc95-9zb8p           1/1     Running             13         6d2h
+nginx-7db9fccd9b-vzqjk             1/1     Running             16         16d
+nginx-c6s27                        1/1     Running             13         6d1h
+nginx-deployment-5f88c697f-4sgtn   1/1     Running             0          87m
+nginx-deployment-5f88c697f-c24rc   1/1     Running             0          87m
+nginx-deployment-5f88c697f-xhk4m   1/1     Running             0          87m
+nginx-glh7w                        1/1     Running             13         6d1h
+nginx-hc8fx                        1/1     Running             13         6d
+nginx-kqtxv                        1/1     Running             13         6d
+task-pv-pod                        1/1     Running             0          43m
+web-0                              1/1     Running             0          40m
+web-1                              0/1     ContainerCreating   0          2s
+
+
+43. Scale down to 1 replica
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes$ k patch statefulsets web -p '{"spec":{"replicas":1}}'
+statefulset.apps/web patched
+
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes$ k get statefulset
+NAME   READY   AGE
+web    1/1     9d
+
+
+44. Write the Pods’ hostnames to their index.html files and verify that the NGINX webservers serve the hostnames.
+
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes$ for i in 0 1; do k exec web-$i -- sh -c 'echo $(hostname) > /usr/share/nginx/html/index.html'; done
+
+45. In one terminal, watch the StatefulSet’s Pods.
+
+k get pod -w -l app=nginx
+
+46.   In a second terminal, delete all of the StatefulSet’s Pods.
+
+k delete pod -l app=nginx
+pod "web-0" deleted
+pod "web-1" deleted
+
+47.Examine the output of the kubectl get command in the first terminal, and wait for all of the Pods to transition to Running and Ready.
+
+kubectl get pod -w -l app=nginx
+
+
+48. Verify the web servers continue to serve their hostnames.
+
+for i in 0 1; do kubectl exec -it web-$i -- curl localhost; done
+web-0
+web-1
+
+49. In one terminal window, patch the web StatefulSet to change the container image again.
+
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes$ k patch statefulset web --type='json' -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/image", "value":"gcr.io/google_containers/nginx-slim:0.8"}]'
+statefulset.apps/web patched
+
+50. In another terminal, watch the Pods in the StatefulSet.
+
+k get po -l app=nginx -w
+
+The Pods in the StatefulSet are updated in reverse ordinal order
+
+51. Get the Pods to view their container images.
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes$ for p in 0 1; do k get po web-$p --template '{{range $i, $c := .spec.containers}}{{$c.image}}{{end}}'; echo; done 
+gcr.io/google_containers/nginx-slim:0.8
+gcr.io/google_containers/nginx-slim:0.8
+
+52. In one terminal window, watch the Pods in the StatefulSet.
+
+k get pods -w -l app=nginx
+
+53. Use kubectl delete to delete the StatefulSet. Make sure to supply the --cascade=false parameter to the command. This parameter tells Kubernetes to only delete the StatefulSet, and to not delete any of its Pods.
+
+k delete statefulset web --cascade=false
+
+
+54. Get the Pods to examine their status.
+
+k get pods -l app=nginx
+
+55. Even though web has been deleted, all of the Pods are still Running and Ready. Delete web-0.
+
+k delete pod web-0
+pod "web-0" deleted
+
+56. Get the StatefulSet’s Pods.
+
+k get pods -l app=nginx
+NAME      READY     STATUS    RESTARTS   AGE
+web-1     1/1       Running   0          10m
+
+As the web StatefulSet has been deleted, web-0 has not been relaunched.
+
+57. In one terminal, watch the StatefulSet’s Pods.
+
+k get pods -w -l app=nginx
+In a second terminal, recreate the StatefulSet. Note that, unless you deleted the nginx Service ( which you should not have ), you will see an error indicating that the Service already exists.
+
+k apply -f controllers/stateful.yaml
+statefulset.apps/web created
+Error from server (AlreadyExists): error when creating "stateful.yaml": services "nginx" already exists
+Ignore the error. It only indicates that an attempt was made to create the nginx Headless Service even though that Service already exists.
+
+58. Examine the output of the kubectl get command running in the first terminal.
+
+k get pods -w -l app=nginx
+
+When the web StatefulSet was recreated, it first relaunched web-0. Since web-1 was already Running and Ready, when web-0 transitioned to Running and Ready, it simply adopted this Pod. Since you recreated the StatefulSet with replicas equal to 2, once web-0 had been recreated, and once web-1 had been determined to already be Running and Ready, web-2 was terminated.
+
+Let’s take another look at the contents of the index.html file served by the Pods’ webservers.
+
+for i in 0 1; do k exec -it web-$i -- curl localhost; done
+web-0
+web-1
+Even though you deleted both the StatefulSet and the web-0 Pod, it still serves the hostname originally entered into its index.html file. This is because the StatefulSet never deletes the PersistentVolumes associated with a Pod. When you recreated the StatefulSet and it relaunched web-0, its original PersistentVolume was remounted.
+
+Jobs
+
+59. Here is an example Job config. It computes π to 2000 places and prints it out. It takes around 10s to complete.
+
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes$ k apply -f controllers/job.yaml
+job.batch/pi created
+
+60. Check on the status of the Job with kubectl:
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes$ k describe jobs/pi
+Name:           pi
+Namespace:      default
+Selector:       controller-uid=5b44f491-8c56-11e9-b5f9-b4b68620ef92
+Labels:         controller-uid=5b44f491-8c56-11e9-b5f9-b4b68620ef92
+                job-name=pi
+Annotations:    kubectl.kubernetes.io/last-applied-configuration:
+                  {"apiVersion":"batch/v1","kind":"Job","metadata":{"annotations":{},"name":"pi","namespace":"default"},"spec":{"backoffLimit":4,"template":...
+Parallelism:    1
+Completions:    1
+Start Time:     Tue, 11 Jun 2019 16:36:53 +0200
+Completed At:   Tue, 11 Jun 2019 16:37:14 +0200
+Duration:       21s
+Pods Statuses:  0 Running / 1 Succeeded / 0 Failed
+Pod Template:
+  Labels:  controller-uid=5b44f491-8c56-11e9-b5f9-b4b68620ef92
+  ......
+
+61. To list all the Pods that belong to a Job in a machine readable form, you can use a command like this:
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes$ pods=$(k get pods --selector=job-name=pi --output=jsonpath='{.items[*].metadata.name}')
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes$ echo $pods
+pi-f5mvl
+
+
+
+62. Here, the selector is the same as the selector for the Job. The --output=jsonpath option specifies an expression that just gets the name from each Pod in the returned list.
+
+View the standard output of one of the pods:
+The output is similar to this:
+
+jvherrera@juanvi-HP-ZBook-14u-G5:~/repositories/devacademyDocker/Kubernetes$ k logs $pods
+
+3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679821480865132823066470938446095505822317253594081284811174502841027019385211055596446229489549303819644288109756659334461284756482337867831652712019091456485669234603486104543266482133936072602491412737245870066063155881748815209209628292540917153643678925903600113305305488204665213841469519415116094330572703657595919530921861173819326117931051185480744623799627495673518857527248912279381830119491298336733624406566430860213949463952247371907021798609437027705392171762931767523846748184676694051320005681271452635608277857713427577896091736371787214684409012249534301465495853710507922796892589235420199561121290219608640344181598136297747713099605187072113499999983729780499510597317328160963185950244594553469083026425223082533446850352619311881710100031378387528865875332083814206171776691473035982534904287554687311595628638823537875937519577818577805321712268066130019278766111959092164201989380952572010654858632788659361533818279682303019520353018529689957736225994138912497217752834791315155748572424541506959508295331168617278558890750983817546374649393192550604009277016711390098488240128583616035637076601047101819429555961989467678374494482553797747268471040475346462080466842590694912933136770289891521047521620569660240580381501935112533824300355876402474964732639141992726042699227967823547816360093417216412199245863150302861829745557067498385054945885869269956909272107975093029553211653449872027559602364806654991198818347977535663698074265425278625518184175746728909777727938000816470600161452491921732172147723501414419735685481613611573525521334757418494684385233239073941433345477624168625189835694855620992192221842725502542568876717904946016534668049886272327917860857843838279679766814541009538837863609506800642251252051173929848960841284886269456042419652850222106611863067442786220391949450471237137869609563643719172874677646575739624138908658326459958133904780275901
+
+
+
+
